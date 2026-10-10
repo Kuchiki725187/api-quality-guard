@@ -1,0 +1,25 @@
+# ---------- Java / Maven ----------
+api-quality-guard-backend/target/
+*.class
+
+# ---------- IDE ----------
+.idea/
+*.iml
+.vscode/
+
+# ---------- 前端 ----------
+api-quality-guard-frontend/node_modules/
+api-quality-guard-frontend/dist/
+
+# ---------- 本地敏感配置 ----------
+application-local.yml
+application-local.yml.example
+.env
+.env.*
+
+
+# ---------- 其他 ----------
+logs/
+*.log
+.DS_Store
+Thumbs.db
