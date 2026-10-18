@@ -9,8 +9,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 单用例执行结果视图对象。
- * 注意：responseSnapshot / assertionResults 可能为 null（ERROR 场景）。
+ * 单用例执行结果视图对象
+ * 注意：responseSnapshot / assertionResults 可能为 null（ERROR 场景）
  */
 @Data
 public class TestResultVO {

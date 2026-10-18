@@ -14,8 +14,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 单用例执行结果，对应 test_result 表。
- * 快照与断言明细为 JSON 列，经 JacksonTypeHandler 映射。
+ * 单用例执行结果，对应 test_result 表
+ * 快照与断言明细为 JSON 列，经 JacksonTypeHandler 映射
  */
 @Data
 @TableName(value = "test_result", autoResultMap = true)
