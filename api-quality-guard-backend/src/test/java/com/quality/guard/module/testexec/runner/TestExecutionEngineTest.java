@@ -11,6 +11,7 @@ import com.quality.guard.module.testexec.model.RequestParams;
 import com.quality.guard.module.testexec.runner.engine.TestExecutionEngine;
 import com.quality.guard.module.testexec.runner.entity.TestResult;
 import com.quality.guard.module.testexec.runner.entity.TestRun;
+import com.quality.guard.module.testexec.runner.mapper.TestResultMapper;
 import com.quality.guard.module.testexec.runner.mapper.TestRunMapper;
 import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
@@ -55,6 +56,9 @@ class TestExecutionEngineTest {
 
     @Autowired
     private TestRunMapper testRunMapper;
+
+    @Autowired
+    private TestResultMapper testResultMapper;
 
     @BeforeAll
     static void startMockServer() throws IOException {
@@ -121,6 +125,27 @@ class TestExecutionEngineTest {
         assertEquals("SUCCESS", run.getStatus());
         assertEquals(1, run.getSuccessCount());
         assertNotNull(run.getFinishedAt());
+    }
+
+    @Test
+    void resultSnapshotsRoundTripThroughDatabase() {
+        Long caseId = createCase(List.of(
+                AssertionRule.builder().type("STATUS_CODE").expected(200).build(),
+                AssertionRule.builder().type("JSON_FIELD").path("$.code")
+                        .operator("EQUALS").expected(200).build()));
+
+        TestResult saved = testExecutionEngine.executeCase(caseId, null);
+        // 关键：从数据库回读，验证 JSON 列（快照 / 断言明细）能正确反序列化
+        TestResult reloaded = testResultMapper.selectById(saved.getId());
+
+        assertNotNull(reloaded.getRequestSnapshot());
+        assertEquals("GET", reloaded.getRequestSnapshot().getMethod());
+        assertEquals("http://127.0.0.1:" + mockPort + "/ok", reloaded.getRequestSnapshot().getUrl());
+        assertNotNull(reloaded.getResponseSnapshot());
+        assertEquals(200, reloaded.getResponseSnapshot().getStatusCode());
+        assertNotNull(reloaded.getAssertionResults());
+        assertEquals(2, reloaded.getAssertionResults().size());
+        assertTrue(reloaded.getAssertionResults().stream().allMatch(AssertionOutcome::isPassed));
     }
 
     @Test

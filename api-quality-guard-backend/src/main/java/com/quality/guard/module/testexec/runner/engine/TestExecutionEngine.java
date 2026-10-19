@@ -64,6 +64,27 @@ public class TestExecutionEngine {
      * @return 落库后的结果实体
      */
     public TestResult executeCase(Long caseId, String baseUrlOverride) {
+        // 单用例调试：创建独立 run（total=1），结束后由本方法汇总 run 终态
+        Long runId = runRecordService.startSingleCaseRun(caseId);
+        TestResult result = doExecute(caseId, baseUrlOverride, runId);
+        String status = result.getStatus();
+        runRecordService.finishRun(runId,
+                "PASSED".equals(status) ? "SUCCESS" : "ERROR".equals(status) ? "ERROR" : "FAILED",
+                "PASSED".equals(status) ? 1 : 0,
+                "FAILED".equals(status) ? 1 : 0,
+                "ERROR".equals(status) ? 1 : 0);
+        return result;
+    }
+
+    /**
+     * 在指定 run 下执行用例（供批量调度复用）
+     * 只保存单条结果，不更新 run 的统计与终态——由调度器在全部用例结束后统一汇总
+     */
+    public TestResult executeCaseInRun(Long caseId, String baseUrlOverride, Long runId) {
+        return doExecute(caseId, baseUrlOverride, runId);
+    }
+
+    private TestResult doExecute(Long caseId, String baseUrlOverride, Long runId) {
         // 1. 加载用例与接口定义（不存在 → 404）
         TestCase testCase = testCaseMapper.selectById(caseId);
         if (testCase == null) {
@@ -74,14 +95,11 @@ public class TestExecutionEngine {
             throw new BusinessException(ResultCode.NOT_FOUND, "接口定义不存在: " + testCase.getApiId());
         }
 
-        // 2. 先构建请求：配置类错误（如未配 baseUrl）在此直接 400，不留下 run 记录
+        // 2. 先构建请求：配置类错误（如未配 baseUrl）直接 400，不落任何结果
         BuiltRequest builtRequest = httpRequestBuilder.build(
                 apiDefinition, testCase.getRequestParams(), baseUrlOverride);
 
-        // 3. 创建 run 记录
-        Long runId = runRecordService.startSingleCaseRun(caseId);
-
-        // 4. 发送请求并计时（nanoTime 差值需换算毫秒）
+        // 3. 发送请求并计时（nanoTime 差值需换算毫秒）
         long startNanos = System.nanoTime();
         ExecutionResult executionResult;
         try {
@@ -110,15 +128,13 @@ public class TestExecutionEngine {
             long elapsedMs = elapsedMillis(startNanos);
             String errorMessage = classify(e);
 
-            TestResult errorResult = runRecordService.saveResult(
+            return runRecordService.saveResult(
                     runId, caseId, "ERROR",
                     requestSnapshot(builtRequest),
                     null,
                     List.of(),
                     errorMessage,
                     elapsedMs);
-            runRecordService.finishRun(runId, "ERROR", 0, 0, 1);
-            return errorResult;
         }
 
         // 6. 断言判定（有响应才到这里）
@@ -128,7 +144,7 @@ public class TestExecutionEngine {
         boolean passed = assertionEngine.allPassed(outcomes);
         String status = passed ? "PASSED" : "FAILED";
 
-        // 7. 响应快照 + 落库（快照字段名与 ExecutionResult 不完全同名）
+        // 7. 响应快照（快照字段名与 ExecutionResult 不完全同名）
         ResponseSnapshot responseSnapshot = ResponseSnapshot.builder()
                 .statusCode(executionResult.getStatusCode())
                 .headers(executionResult.getHeaders())
@@ -137,20 +153,14 @@ public class TestExecutionEngine {
                 .elapsedMs(executionResult.getElapsedMs())
                 .build();
 
-        TestResult result = runRecordService.saveResult(
+        // 8. 返回落库后的结果（run 终态由 executeCase 或调度器统一处理）
+        return runRecordService.saveResult(
                 runId, caseId, status,
                 requestSnapshot(builtRequest),
                 responseSnapshot,
                 outcomes,
                 null,
                 executionResult.getElapsedMs());
-
-        // 8. run 终态：PASSED→SUCCESS(1,0,0)；FAILED→FAILED(0,1,0)
-        runRecordService.finishRun(runId, passed ? "SUCCESS" : "FAILED",
-                passed ? 1 : 0, passed ? 0 : 1, 0);
-
-        // 9. 返回落库后的结果
-        return result;
     }
 
     private long elapsedMillis(long startNanos) {

@@ -237,9 +237,14 @@ class TestCaseGeneratorTest {
     }
 
     @Test
-    void apiWithoutRequestSchemaYieldsNoCases() {
+    void apiWithoutParametersStillYieldsNormalCase() {
         ApiDefinition api = new ApiDefinition();
         api.setName("无参数接口");
-        assertTrue(generator.generate(api, null).isEmpty());
+        List<GeneratedCase> cases = generator.generate(api, null);
+
+        // 无参数接口也应生成一条空参数的正常值用例（断言状态码默认 200）
+        assertEquals(1, cases.size());
+        assertEquals(StrategyType.NORMAL, cases.get(0).getStrategyType());
+        assertEquals(200, cases.get(0).getAssertionRules().get(0).getExpected());
     }
 }

@@ -31,12 +31,13 @@ public class NormalValueStrategy implements GenerationStrategy {
 
     @Override
     public List<GeneratedCase> generate(ApiDefinition apiDefinition) {
-        //接口请求为空返回空集合
-        if (apiDefinition.getRequestSchema() == null) {
-            return List.of();
-        }
-        //生成合法的参数
-        RequestParams params = baseParamsFactory.buildLegalParams(apiDefinition);
+        // 无参数定义（如手动创建的接口）也要生成一条"空参数"正常值用例——空参数请求本身是合法的
+        boolean hasParams = apiDefinition.getRequestSchema() != null
+                && apiDefinition.getRequestSchema().getParams() != null
+                && !apiDefinition.getRequestSchema().getParams().isEmpty();
+        RequestParams params = hasParams
+                ? baseParamsFactory.buildLegalParams(apiDefinition)
+                : new RequestParams();
 
         List<AssertionRule> assertions = new ArrayList<>();
         //预期结果为状态码=200
@@ -48,7 +49,9 @@ public class NormalValueStrategy implements GenerationStrategy {
                 .name(apiDefinition.getName() + "-正常值")
                 .requestParams(params)
                 .assertionRules(assertions)
-                .generationNote("NormalValueStrategy: 全部参数取合法值（约束内中间值/贴边值；pattern 约束暂未处理）")
+                .generationNote(hasParams
+                        ? "NormalValueStrategy: 全部参数取合法值（约束内中间值/贴边值；pattern 约束暂未处理）"
+                        : "NormalValueStrategy: 接口无参数定义，按空参数请求生成")
                 .strategyType(StrategyType.NORMAL)
                 .build();
         return List.of(generatedCase);

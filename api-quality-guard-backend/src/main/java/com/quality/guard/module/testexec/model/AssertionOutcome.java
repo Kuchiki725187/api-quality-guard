@@ -1,13 +1,17 @@
 package com.quality.guard.module.testexec.model;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * 单条断言的判定明细（test_result.assertion_results JSON 数组的元素）
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AssertionOutcome {
 
     /** 断言类型：STATUS_CODE / JSON_FIELD / RESPONSE_TIME */
