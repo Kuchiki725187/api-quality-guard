@@ -1,0 +1,24 @@
+name: Quality Gate
+
+# 简单 CI 集成：触发测试计划执行 → 轮询 → 质量门禁检查 → 阻断则构建失败
+# 前置条件：API Quality Guard 与被测服务已启动
+# 可在下方 "Run quality gate" 之前加入 docker compose up -d 与服务健康检查步骤）
+on:
+  workflow_dispatch:
+    inputs:
+      plan_id:
+        description: 测试计划 ID
+        required: true
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run quality gate
+        env:
+          # 在仓库 Settings → Variables 中配置被测平台地址，例如 http://your-host:8080
+          AQG_BASE_URL: ${{ vars.AQG_BASE_URL }}
+        run: |
+          bash scripts/ci/quality-gate.sh "${{ inputs.plan_id }}" "${AQG_BASE_URL:-http://localhost:8080}"

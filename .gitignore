@@ -16,7 +16,7 @@ application-local.yml
 application-local.yml.example
 .env
 .env.*
-
+docs
 
 # ---------- 其他 ----------
 logs/

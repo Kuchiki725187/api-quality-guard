@@ -15,7 +15,7 @@ import java.math.RoundingMode;
 import java.util.List;
 
 /**
- * 质量评分计算器（M2 核心）：
+ * 质量评分计算器
  * 三维度加权评分——功能通过率 70% + 性能达标率 15% + 稳定性 15%。
  * 计算口径：
  * - 功能通过率 = PASSED 用例数 / 用例总数 × 100（ERROR 计入分母、不计入分子）
