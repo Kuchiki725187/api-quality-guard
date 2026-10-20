@@ -7,6 +7,7 @@ import com.quality.guard.module.testexec.runner.entity.TestResult;
 import com.quality.guard.module.testexec.runner.entity.TestRun;
 import com.quality.guard.module.testexec.runner.mapper.TestResultMapper;
 import com.quality.guard.module.testexec.runner.mapper.TestRunMapper;
+import com.quality.guard.module.scoring.calculator.ScoreCalculator;
 import com.quality.guard.module.testexec.runner.service.RunRecordService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,7 @@ public class RunRecordServiceImpl implements RunRecordService {
 
     private final TestRunMapper testRunMapper;
     private final TestResultMapper testResultMapper;
+    private final ScoreCalculator scoreCalculator;
 
     @Override
     public Long startSingleCaseRun(Long caseId) {
@@ -67,5 +69,10 @@ public class RunRecordServiceImpl implements RunRecordService {
         run.setErrorCount(errorCount);
         run.setFinishedAt(LocalDateTime.now());
         testRunMapper.updateById(run);
+
+        // 仅正常完成的运行参与评分（取消/任务级异常的运行数据不完整，不评分）
+        if ("SUCCESS".equals(status) || "FAILED".equals(status)) {
+            scoreCalculator.calculateForRun(runId);
+        }
     }
 }

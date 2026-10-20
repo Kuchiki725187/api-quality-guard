@@ -3,6 +3,7 @@ package com.quality.guard.module.testexec.runner.scheduler;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.quality.guard.common.exception.BusinessException;
 import com.quality.guard.common.result.ResultCode;
+import com.quality.guard.module.scoring.calculator.ScoreCalculator;
 import com.quality.guard.module.testexec.runner.engine.TestExecutionEngine;
 import com.quality.guard.module.testexec.runner.entity.TestRun;
 import com.quality.guard.module.testexec.runner.mapper.TestRunMapper;
@@ -34,6 +35,7 @@ public class PlanRunExecutor {
     private final TestRunMapper testRunMapper;
     private final RunCancellationRegistry cancellationRegistry;
     private final RunRecordService runRecordService;
+    private final ScoreCalculator scoreCalculator;
     private final ThreadPoolExecutor planRunExecutor;
 
     /** 提交 run 的执行任务（立即返回；任务在线程池中异步执行） */
@@ -92,6 +94,9 @@ public class PlanRunExecutor {
                     .eq(TestRun::getStatus, "RUNNING"));
             if (updated == 0) {
                 log.warn("run {} 终态写入失败：状态已被并发修改", runId);
+            } else if ("SUCCESS".equals(finalStatus) || "FAILED".equals(finalStatus)) {
+                // 正常完成的任务计算质量评分（取消/异常的任务不评分）
+                scoreCalculator.calculateForRun(runId);
             }
             log.info("run {} 执行结束: status={}, success={}, failed={}, error={}",
                     runId, finalStatus, success, failed, error);

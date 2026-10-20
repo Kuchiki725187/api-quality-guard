@@ -150,6 +150,19 @@ class PlanRunIntegrationTest {
         throw new AssertionError("run 未在超时内进入终态: " + runId);
     }
 
+    /** 等待终态且评分已写入（评分在终态写入之后完成，轮询可能先读到未评分状态） */
+    private TestRun awaitScored(Long runId, long timeoutMs) throws InterruptedException {
+        long deadline = System.currentTimeMillis() + timeoutMs;
+        while (System.currentTimeMillis() < deadline) {
+            TestRun run = testRunMapper.selectById(runId);
+            if (run != null && run.getScore() != null) {
+                return run;
+            }
+            Thread.sleep(50);
+        }
+        throw new AssertionError("评分未在超时内写入: " + runId);
+    }
+
     private long countDetails(Long runId) {
         Long count = testResultMapper.selectCount(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<TestResult>()
@@ -169,7 +182,7 @@ class PlanRunIntegrationTest {
         Long planId = createPlan("全部通过", caseIds);
 
         Long runId = planRunService.submit(planId, null);
-        TestRun run = awaitTerminal(runId, 10_000);
+        TestRun run = awaitScored(runId, 10_000);
 
         assertEquals("SUCCESS", run.getStatus());
         assertEquals(3, run.getTotalCount());
@@ -179,6 +192,11 @@ class PlanRunIntegrationTest {
         assertEquals(3, countDetails(runId));
         assertNotNull(run.getStartedAt());
         assertNotNull(run.getFinishedAt());
+
+        // 全部通过的运行评分应为 100（优秀）
+        assertEquals(0, new java.math.BigDecimal("100.00").compareTo(run.getScore()));
+        assertNotNull(run.getScoreDetail());
+        assertEquals("优秀", run.getScoreDetail().getGrade());
     }
 
     @Test

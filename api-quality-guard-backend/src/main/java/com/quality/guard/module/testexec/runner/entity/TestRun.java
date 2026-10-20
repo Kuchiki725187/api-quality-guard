@@ -1,10 +1,14 @@
 package com.quality.guard.module.testexec.runner.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.quality.guard.module.scoring.calculator.ScoreDetail;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -12,7 +16,7 @@ import java.time.LocalDateTime;
  * 一次执行任务 = 一个 run：批量执行（plan_id 非空）或单用例调试（plan_id 为空、total=1）
  */
 @Data
-@TableName("test_run")
+@TableName(value = "test_run", autoResultMap = true)
 public class TestRun {
 
     @TableId(type = IdType.AUTO)
@@ -31,6 +35,13 @@ public class TestRun {
     private Integer failedCount;
 
     private Integer errorCount;
+
+    /** 综合质量评分（0-100），终态 SUCCESS/FAILED 时计算 */
+    private BigDecimal score;
+
+    /** 评分维度明细（JSON） */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private ScoreDetail scoreDetail;
 
     private LocalDateTime startedAt;
 

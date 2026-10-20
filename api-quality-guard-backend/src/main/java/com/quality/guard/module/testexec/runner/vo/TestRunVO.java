@@ -1,7 +1,9 @@
 package com.quality.guard.module.testexec.runner.vo;
 
+import com.quality.guard.module.scoring.calculator.ScoreDetail;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -26,6 +28,12 @@ public class TestRunVO {
     private Integer failedCount;
 
     private Integer errorCount;
+
+    /** 综合质量评分（0-100），未评分时为 null */
+    private BigDecimal score;
+
+    /** 评分维度明细 */
+    private ScoreDetail scoreDetail;
 
     private LocalDateTime startedAt;
 

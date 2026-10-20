@@ -162,6 +162,8 @@ public class ExecutionController {
         vo.setSuccessCount(run.getSuccessCount());
         vo.setFailedCount(run.getFailedCount());
         vo.setErrorCount(run.getErrorCount());
+        vo.setScore(run.getScore());
+        vo.setScoreDetail(run.getScoreDetail());
         vo.setStartedAt(run.getStartedAt());
         vo.setFinishedAt(run.getFinishedAt());
         vo.setCreatedAt(run.getCreatedAt());
