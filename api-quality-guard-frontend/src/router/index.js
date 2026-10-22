@@ -38,6 +38,11 @@ const routes = [
         meta: { title: '执行记录' },
       },
       {
+        path: 'test/report/:id',
+        component: () => import('@/views/test/Report.vue'),
+        meta: { title: '运行报告' },
+      },
+      {
         path: 'quality/score',
         component: () => import('@/views/quality/Score.vue'),
         meta: { title: '质量评分' },

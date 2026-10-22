@@ -225,6 +225,10 @@ async function loadResults() {
   }
 }
 
+function openReport(run) {
+  router.push(`/test/report/${run.id}`)
+}
+
 function assertionText(a) {
   if (a.type === 'STATUS_CODE') return 'HTTP 状态码'
   if (a.type === 'JSON_FIELD') return `${a.path} ${a.operator}`
@@ -335,9 +339,12 @@ onMounted(() => {
         <el-table-column label="耗时" width="90">
           <template #default="{ row }">{{ durationText(row) }}</template>
         </el-table-column>
-        <el-table-column label="操作" width="170">
+        <el-table-column label="操作" width="250">
           <template #default="{ row }">
             <el-button size="small" plain @click="openResults(row)">查看结果</el-button>
+            <el-button size="small" plain :disabled="isActive(row.status)" @click="openReport(row)">
+              报告
+            </el-button>
             <el-button v-if="isActive(row.status)" size="small" type="danger" plain @click="cancelRun(row)">
               取消
             </el-button>

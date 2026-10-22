@@ -50,3 +50,40 @@ class DiagnosisResponse(BaseModel):
     outputTokens: int | None = None
     durationMs: int
     rawOutput: str
+
+
+# ================= AI 用例增强 =================
+
+
+class EnhanceRequest(BaseModel):
+    """AI 用例增强请求"""
+
+    apiId: int
+    apiName: str | None = None
+    apiMethod: str | None = None
+    apiPath: str | None = None
+    apiDescription: str | None = None
+    apiRequestSchema: Any | None = None
+    apiResponseSchema: Any | None = None
+    extraContext: str | None = None
+    count: int = Field(default=3, ge=1, le=10)
+
+
+class EnhancedCase(BaseModel):
+    """单条 AI 候选用例（落库前由主平台校验并转换为 test_case）"""
+
+    name: str = Field(min_length=1)
+    requestParams: dict[str, Any]
+    assertionRules: list[dict[str, Any]] = Field(min_length=1)
+    generationNote: str = Field(min_length=1)
+
+
+class EnhanceResponse(BaseModel):
+    """AI 用例增强响应"""
+
+    cases: list[EnhancedCase]
+    model: str
+    inputTokens: int | None = None
+    outputTokens: int | None = None
+    durationMs: int
+    rawOutput: str

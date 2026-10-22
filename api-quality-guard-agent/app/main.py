@@ -1,8 +1,5 @@
 """API Quality Guard - 轻量级诊断 Agent 服务入口
 
-接口：
-- POST /agent/diagnose   诊断（失败返回 502 + {"message": "..."}）
-- GET  /agent/health     健康检查
 """
 import logging
 
@@ -12,8 +9,9 @@ from fastapi.responses import JSONResponse
 
 from app.agent import diagnose
 from app.config import settings
+from app.enhance_agent import enhance
 from app.errors import AgentError
-from app.schemas import DiagnosisRequest
+from app.schemas import DiagnosisRequest, EnhanceRequest
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("agent")
@@ -29,6 +27,11 @@ def health() -> dict:
 @app.post("/agent/diagnose")
 async def diagnose_endpoint(request: DiagnosisRequest):
     return await diagnose(request)
+
+
+@app.post("/agent/enhance")
+async def enhance_endpoint(request: EnhanceRequest):
+    return await enhance(request)
 
 
 @app.exception_handler(RequestValidationError)
@@ -53,3 +56,12 @@ async def handle_agent_error(_: Request, exc: AgentError) -> JSONResponse:
 async def handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
     logger.exception("Agent 内部错误")
     return JSONResponse(status_code=500, content={"message": f"Agent 内部错误: {exc}"})
+
+
+if __name__ == "__main__":
+    # 本地启动入口（等价于: uvicorn app.main:app --host 0.0.0.0 --port 8090）
+    # 注意：必须在 api-quality-guard-agent 目录下执行 python -m app.main，
+    # 否则 .env 与 app 包路径都可能找不到。
+    import uvicorn
+
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8090)

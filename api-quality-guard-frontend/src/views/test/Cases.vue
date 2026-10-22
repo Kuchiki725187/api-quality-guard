@@ -52,6 +52,46 @@ async function generate() {
   }
 }
 
+// ---------- AI 用例增强 ----------
+const aiVisible = ref(false)
+const aiContext = ref('')
+const aiCount = ref(3)
+const aiGenerating = ref(false)
+
+function openAiDialog() {
+  if (!selectedApiId.value) {
+    ElMessage.warning('请先在上方选择接口')
+    return
+  }
+  aiContext.value = ''
+  aiCount.value = 3
+  aiVisible.value = true
+}
+
+async function aiGenerate() {
+  if (!selectedApiId.value) return
+  aiGenerating.value = true
+  try {
+    // AI 生成同步等待模型返回，单独放宽超时
+    const data = await http.post(
+      '/cases/ai-generate',
+      {
+        apiId: selectedApiId.value,
+        extraContext: aiContext.value.trim() || undefined,
+        count: aiCount.value,
+      },
+      { timeout: 150000 },
+    )
+    generatedCases.value = data.cases
+    aiVisible.value = false
+    ElMessage.success(`AI 生成 ${data.generatedCount} 条候选用例（来源标记为 AI，建议人工确认）`)
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    aiGenerating.value = false
+  }
+}
+
 // ---------- 立即执行 ----------
 const runningId = ref(null)
 const runResult = ref(null)
@@ -297,6 +337,10 @@ async function saveCase() {
         </el-checkbox-group>
         <el-button type="primary" :loading="generating" @click="generate">生成用例</el-button>
         <el-button @click="openCreateDialog">手动新建用例</el-button>
+        <el-button type="success" plain @click="openAiDialog">
+          <el-icon><MagicStick /></el-icon>
+          <span>AI 增强生成</span>
+        </el-button>
       </div>
 
       <div v-if="lastSaved" class="last-saved">
@@ -319,6 +363,13 @@ async function saveCase() {
         style="margin-top: 14px"
       >
         <el-table-column prop="name" label="用例名称" min-width="220" />
+        <el-table-column label="来源" width="90">
+          <template #default="{ row }">
+            <el-tag size="small" :type="row.generationType === 'AI' ? 'warning' : 'info'" effect="plain">
+              {{ row.generationType }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="generationNote" label="生成说明" min-width="340" />
         <el-table-column label="断言数" width="90">
           <template #default="{ row }">{{ row.assertionRules?.length ?? 0 }}</template>
@@ -372,6 +423,35 @@ async function saveCase() {
         </div>
       </template>
     </div>
+
+    <el-dialog v-model="aiVisible" title="AI 用例增强" width="560px">
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="规则生成覆盖基础场景；AI 补充并发、幂等、状态流转、权限等复杂业务场景。生成结果标记为 AI 来源，建议人工确认后再纳入测试计划。"
+      />
+      <el-form label-width="90px" label-position="left" style="margin-top: 16px">
+        <el-form-item label="业务背景">
+          <el-input
+            v-model="aiContext"
+            type="textarea"
+            :rows="4"
+            maxlength="2000"
+            placeholder="可选，如：同一订单仅可取消一次；库存不足时创建订单应失败"
+          />
+        </el-form-item>
+        <el-form-item label="生成条数">
+          <el-input-number v-model="aiCount" :min="1" :max="10" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="aiVisible = false">取消</el-button>
+        <el-button type="success" :loading="aiGenerating" @click="aiGenerate">
+          {{ aiGenerating ? 'AI 生成中（可能需要 10~60 秒）…' : '生成候选用例' }}
+        </el-button>
+      </template>
+    </el-dialog>
 
     <el-dialog v-model="dialogVisible" title="手动创建用例" width="660px">
       <el-form label-width="90px" label-position="left">
