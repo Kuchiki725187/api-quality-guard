@@ -1,193 +1,114 @@
 <script setup>
 import { ref } from 'vue'
-import { assistantAnswers, assistantShortcuts } from '@/mock/data'
+import { useRouter } from 'vue-router'
 
+const router = useRouter()
+
+const shortcuts = ['为什么接口评分下降？', '哪些接口存在风险？', '如何优化测试覆盖率？']
 const question = ref('')
-const current = ref(null)
-const asking = ref(false)
+const askedQuestion = ref('')
 
-function ask(q) {
-  const text = (q ?? question.value).trim()
-  if (!text) return
-  question.value = text
-  asking.value = true
-  current.value = null
-  setTimeout(() => {
-    asking.value = false
-    current.value = assistantAnswers[text] ?? {
-      conclusion: `已收到问题「${text}」`,
-      points: [
-        '当前平台质量数据整体平稳，近 7 天无新增高风险接口',
-        '订单模块通过率存在小幅波动，已低于平台均值 6 个百分点',
-      ],
-      advice: ['可在质量评分页查看维度明细定位短板', '对波动接口执行一次回归测试以确认稳定性'],
-    }
-  }, 800)
+function ask(text) {
+  const q = (text ?? question.value).trim()
+  if (!q) return
+  askedQuestion.value = q
+  question.value = q
 }
 </script>
 
 <template>
   <div class="page">
     <div class="panel">
-      <div class="assistant-head">
-        <el-icon color="#8b5cf6" :size="22"><MagicStick /></el-icon>
-        <div>
-          <div class="assistant-title">AI 辅助分析</div>
-          <div class="assistant-sub">基于执行记录与质量数据回答你的问题</div>
-        </div>
+      <h3 class="panel-title">
+        <span>AI 辅助分析</span>
+        <el-tag effect="plain" size="small" type="warning">自然语言问答规划中</el-tag>
+      </h3>
+
+      <el-alert
+        type="info"
+        :closable="false"
+        show-icon
+        title="当前版本的 AI 能力聚焦「失败测试结果的故障诊断」：请到执行记录页对 FAILED / ERROR 结果发起诊断，报告可在「AI 质量报告」页查看与反馈。"
+      />
+
+      <div class="shortcut-row">
+        <el-button v-for="q in shortcuts" :key="q" plain @click="ask(q)">{{ q }}</el-button>
       </div>
 
-      <div class="shortcuts">
-        <el-button
-          v-for="s in assistantShortcuts"
-          :key="s"
-          round
-          size="small"
-          class="shortcut"
-          @click="ask(s)"
-        >
-          {{ s }}
-        </el-button>
-      </div>
-
-      <div class="ask-row">
+      <div class="input-row">
         <el-input
           v-model="question"
-          placeholder="输入你的问题，例如：为什么接口评分下降？"
+          placeholder="输入你想了解的问题（当前版本将给出功能引导）"
           @keyup.enter="ask()"
         />
-        <el-button type="primary" :loading="asking" @click="ask()">
-          <el-icon><Promotion /></el-icon>
-          <span>分析</span>
-        </el-button>
-      </div>
-    </div>
-
-    <div v-if="asking" class="panel loading-panel">
-      <el-icon class="is-loading" :size="26" color="#8b5cf6"><Loading /></el-icon>
-      <span>AI 正在分析平台质量数据…</span>
-    </div>
-
-    <div v-else-if="current" class="panel result-panel">
-      <div class="section">
-        <div class="section-title">结论</div>
-        <div class="conclusion">{{ current.conclusion }}</div>
+        <el-button type="primary" @click="ask()">发送</el-button>
       </div>
 
-      <div class="section">
-        <div class="section-title">分析要点</div>
-        <ul class="point-list">
-          <li v-for="(p, i) in current.points" :key="i">{{ p }}</li>
+      <div v-if="askedQuestion" class="guide-card">
+        <div class="guide-title">关于「{{ askedQuestion }}」</div>
+        <p class="guide-text">自然语言问答能力尚未上线。当前可以使用的 AI 能力：</p>
+        <ul class="guide-list">
+          <li>在执行记录的失败结果上发起 <b>AI 故障诊断</b>（Agent 会自动调用工具取证）</li>
+          <li>在 AI 质量报告中查看结构化诊断（候选原因 / 置信度 / 证据 / 建议）</li>
+          <li>对诊断结果提交人工反馈，用于准确率统计与优化</li>
         </ul>
-      </div>
-
-      <div class="section advice">
-        <div class="section-title ai-color">
-          <el-icon><MagicStick /></el-icon>
-          <span>建议</span>
+        <div class="guide-actions">
+          <el-button type="primary" @click="router.push('/test/records')">去发起诊断</el-button>
+          <el-button @click="router.push('/ai/report')">查看诊断报告</el-button>
         </div>
-        <ul class="point-list">
-          <li v-for="(a, i) in current.advice" :key="i">{{ a }}</li>
-        </ul>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.assistant-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.assistant-title {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.assistant-sub {
-  font-size: 12px;
-  color: var(--aqg-text-muted);
-  margin-top: 2px;
-}
-
-.shortcuts {
+.shortcut-row {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 16px;
+  margin: 16px 0 12px;
 }
 
-.shortcut {
-  border-color: rgba(139, 92, 246, 0.4);
-  color: var(--aqg-purple);
+.input-row {
+  display: flex;
+  gap: 10px;
+  max-width: 640px;
+}
+
+.guide-card {
+  margin-top: 18px;
+  padding: 16px 18px;
+  border-radius: 10px;
+  border: 1px solid rgba(139, 92, 246, 0.35);
   background: rgba(139, 92, 246, 0.08);
 }
 
-.ask-row {
-  display: flex;
-  gap: 12px;
-}
-
-.loading-panel {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--aqg-text-secondary);
+.guide-title {
   font-size: 14px;
+  font-weight: 700;
+  color: #c4b5fd;
 }
 
-.result-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.section-title {
+.guide-text {
+  margin: 10px 0 6px;
   font-size: 13px;
-  font-weight: 600;
   color: var(--aqg-text-secondary);
 }
 
-.ai-color {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--aqg-purple);
-}
-
-.conclusion {
-  padding: 14px 16px;
-  border-radius: 8px;
-  border-left: 3px solid var(--aqg-purple);
-  background: var(--aqg-panel);
-  font-size: 14.5px;
-  line-height: 1.7;
-}
-
-.point-list {
+.guide-list {
   margin: 0;
   padding-left: 18px;
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  font-size: 13.5px;
+  gap: 4px;
+  font-size: 13px;
   line-height: 1.7;
   color: var(--aqg-text);
 }
 
-.advice {
-  padding: 14px 16px;
-  border-radius: 8px;
-  border: 1px solid rgba(139, 92, 246, 0.35);
-  background: rgba(139, 92, 246, 0.08);
+.guide-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
 }
 </style>

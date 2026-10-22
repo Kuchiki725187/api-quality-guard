@@ -1,7 +1,10 @@
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import http from '@/api/http'
+
+const router = useRouter()
 
 // ---------- 测试计划 ----------
 const plans = ref([])
@@ -147,6 +150,25 @@ async function cancelRun(run) {
     loadRuns()
   } catch (e) {
     ElMessage.error(e.message)
+  }
+}
+
+// ---------- AI 诊断 ----------
+const diagnosingId = ref(null)
+
+async function diagnose(row) {
+  diagnosingId.value = row.id
+  ElMessage.info('正在请求 AI 诊断，模型分析可能需要 10~60 秒…')
+  try {
+    // 诊断同步等待模型返回（含工具循环），单独放宽超时
+    const data = await http.post(`/results/${row.id}/diagnose`, {}, { timeout: 150000 })
+    ElMessage.success('诊断完成')
+    resultVisible.value = false
+    router.push({ path: '/ai/report', query: { diagnosisId: data.id } })
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    diagnosingId.value = null
   }
 }
 
@@ -416,6 +438,17 @@ onMounted(() => {
                   <div class="snap-label">响应（{{ row.responseSnapshot.statusCode }}）</div>
                   <pre class="json-view">{{ prettyBody(row.responseSnapshot.body) }}</pre>
                 </div>
+                <div v-if="row.status === 'FAILED' || row.status === 'ERROR'" class="expand-actions">
+                  <el-button
+                    size="small"
+                    type="primary"
+                    :loading="diagnosingId === row.id"
+                    @click="diagnose(row)"
+                  >
+                    <el-icon><MagicStick /></el-icon>
+                    <span>AI 诊断</span>
+                  </el-button>
+                </div>
               </div>
             </template>
           </el-table-column>
@@ -554,6 +587,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.expand-actions {
+  display: flex;
+  gap: 8px;
 }
 
 .assert-list {

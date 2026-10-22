@@ -1,0 +1,20 @@
+{
+  "caseId": 1,
+  "apiId": 1,
+  "caseName": "查询用户-正常值",
+  "apiMethod": "GET",
+  "apiPath": "/users/1",
+  "apiBaseUrl": "http://localhost:9090",
+  "apiDescription": "查询用户详情接口",
+  "requestParams": { "path": { "id": 1 } },
+  "responseSnapshot": {
+    "statusCode": 200,
+    "body": "{\"code\":40401,\"message\":\"user not found\"}",
+    "elapsedMs": 87
+  },
+  "assertionResults": [
+    { "type": "STATUS_CODE", "expected": 200, "actual": 200, "passed": true },
+    { "type": "JSON_FIELD", "path": "$.code", "operator": "EQUALS", "expected": 0, "actual": "40401", "passed": false }
+  ],
+  "extraContext": "该接口本周刚上线新版本"
+}

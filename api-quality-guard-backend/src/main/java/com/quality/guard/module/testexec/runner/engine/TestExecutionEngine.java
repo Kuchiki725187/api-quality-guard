@@ -50,8 +50,12 @@ public class TestExecutionEngine {
     private final AssertionEngine assertionEngine;
     private final RunRecordService runRecordService;
 
-    /** 重定向策略 NEVER：测试平台需观察接口的真实响应，不自动跟随跳转 */
+    /**
+     * 重定向策略 NEVER：测试平台需观察接口的真实响应，不自动跟随跳转。
+     * 强制 HTTP/1.1：避免对不支持 h2c 升级的被测服务（uvicorn/Flask/简易 Node 服务）出现请求体丢失。
+     */
     private final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(3))
             .followRedirects(HttpClient.Redirect.NEVER)
             .build();

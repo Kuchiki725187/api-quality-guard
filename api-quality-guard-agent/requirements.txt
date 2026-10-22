@@ -1,0 +1,7 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+langchain-core>=0.3
+langchain-openai>=0.2
+pydantic>=2.9
+pydantic-settings>=2.6
+httpx>=0.27

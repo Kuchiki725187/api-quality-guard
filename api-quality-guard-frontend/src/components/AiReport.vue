@@ -1,64 +1,78 @@
 <script setup>
 defineProps({
-  report: { type: Object, required: true },
+  diag: { type: Object, required: true },
 })
 
-const riskType = (r) =>
-  String(r).includes('高') ? 'danger' : String(r).includes('中') ? 'warning' : 'success'
+const confidencePercent = (c) => Math.round((c ?? 0) * 100)
 </script>
 
 <template>
   <div class="ai-report">
     <div class="head">
       <div class="head-left">
-        <span class="api-name">{{ report.apiName }}</span>
-        <code class="api-path">{{ report.api }}</code>
+        <span class="api-name">{{ diag.caseName || '未知用例' }}</span>
+        <code class="api-path">结果 #{{ diag.testResultId }}</code>
       </div>
       <div class="head-right">
-        <el-tag :type="riskType(report.riskLevel)" effect="dark">{{ report.riskLevel }}</el-tag>
-        <span class="score">质量分 <b>{{ report.score }}</b></span>
+        <el-tag type="info" effect="plain" size="small">{{ diag.modelName || '—' }}</el-tag>
+        <span class="meta">
+          {{ diag.inputTokens ?? 0 }} / {{ diag.outputTokens ?? 0 }} tokens ·
+          {{ diag.durationMs ?? 0 }} ms
+        </span>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">检测问题</div>
-      <p class="text">{{ report.issue }}</p>
-    </div>
-
-    <div class="section">
-      <div class="section-title">潜在影响</div>
-      <p class="text impact">{{ report.impact }}</p>
-    </div>
-
-    <div class="section advice">
+    <div class="section conclusion-block">
       <div class="section-title ai-title">
         <el-icon><MagicStick /></el-icon>
-        <span>AI 建议</span>
+        <span>诊断结论</span>
+      </div>
+      <p class="conclusion">{{ diag.candidateCauses?.conclusion ?? '—' }}</p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">候选原因</div>
+      <div
+        v-for="(c, i) in diag.candidateCauses?.causes ?? []"
+        :key="i"
+        class="cause-card"
+      >
+        <div class="cause-head">
+          <span class="cause-title">{{ c.cause }}</span>
+          <span class="confidence">置信度 {{ confidencePercent(c.confidence) }}%</span>
+        </div>
+        <el-progress
+          :percentage="confidencePercent(c.confidence)"
+          :stroke-width="6"
+          :show-text="false"
+          color="#8b5cf6"
+        />
+        <ul class="evidence">
+          <li v-for="(e, j) in c.evidence" :key="j">{{ e }}</li>
+        </ul>
+      </div>
+      <el-empty
+        v-if="!diag.candidateCauses?.causes?.length"
+        description="无候选原因"
+        :image-size="60"
+      />
+    </div>
+
+    <div class="section advice" v-if="diag.candidateCauses?.suggestions?.length">
+      <div class="section-title ai-title">
+        <el-icon><MagicStick /></el-icon>
+        <span>处理建议</span>
       </div>
       <ul class="advice-list">
-        <li v-for="(s, i) in report.suggestions" :key="i">{{ s }}</li>
+        <li v-for="(s, i) in diag.candidateCauses.suggestions" :key="i">{{ s }}</li>
       </ul>
     </div>
 
-    <div class="grid-2">
-      <div class="section sub">
-        <div class="section-title">优化建议</div>
-        <ul class="advice-list">
-          <li v-for="(s, i) in report.optimization" :key="i">{{ s }}</li>
-        </ul>
-      </div>
-      <div class="section sub">
-        <div class="section-title">测试建议</div>
-        <ul class="advice-list">
-          <li v-for="(s, i) in report.testAdvice" :key="i">{{ s }}</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="risk-note">
-      <el-icon><Warning /></el-icon>
-      <span>{{ report.riskNote }}</span>
-    </div>
+    <el-collapse class="raw">
+      <el-collapse-item title="模型原始输出（排查用）" name="raw">
+        <pre class="json-view">{{ diag.rawModelOutput || '—' }}</pre>
+      </el-collapse-item>
+    </el-collapse>
   </div>
 </template>
 
@@ -66,7 +80,7 @@ const riskType = (r) =>
 .ai-report {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
 }
 
 .head {
@@ -90,7 +104,7 @@ const riskType = (r) =>
 
 .api-path {
   font-family: ui-monospace, Consolas, monospace;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--aqg-text-muted);
 }
 
@@ -100,20 +114,15 @@ const riskType = (r) =>
   gap: 12px;
 }
 
-.score {
-  font-size: 13px;
-  color: var(--aqg-text-secondary);
-}
-
-.score b {
-  color: var(--aqg-text);
-  font-size: 15px;
+.meta {
+  font-size: 12px;
+  color: var(--aqg-text-muted);
 }
 
 .section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .section-title {
@@ -129,14 +138,54 @@ const riskType = (r) =>
   color: var(--aqg-purple);
 }
 
-.text {
+.conclusion {
   margin: 0;
-  font-size: 14px;
-  line-height: 1.7;
+  font-size: 14.5px;
+  line-height: 1.8;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.35);
 }
 
-.impact {
-  color: #fbbf24;
+.cause-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--aqg-border);
+  background: var(--aqg-panel);
+}
+
+.cause-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cause-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--aqg-text);
+}
+
+.confidence {
+  font-size: 12px;
+  color: #a78bfa;
+  white-space: nowrap;
+}
+
+.evidence {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--aqg-text-secondary);
 }
 
 .advice {
@@ -157,23 +206,10 @@ const riskType = (r) =>
   color: var(--aqg-text);
 }
 
-.sub {
-  padding: 14px 16px;
-  border-radius: 8px;
-  border: 1px solid var(--aqg-border);
-  background: var(--aqg-panel);
-}
-
-.risk-note {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: rgba(239, 68, 68, 0.08);
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  font-size: 13px;
-  line-height: 1.6;
-  color: #fca5a5;
+.raw {
+  --el-collapse-border-color: var(--aqg-border);
+  --el-collapse-header-bg-color: transparent;
+  --el-collapse-content-bg-color: transparent;
+  --el-collapse-header-text-color: var(--aqg-text-secondary);
 }
 </style>
