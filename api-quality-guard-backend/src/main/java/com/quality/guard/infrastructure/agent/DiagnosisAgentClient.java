@@ -105,6 +105,7 @@ public class DiagnosisAgentClient {
             throw new BusinessException(ResultCode.INTERNAL_ERROR, "解析 AI 诊断响应失败");
         }
     }
+
         //提取错误信息
     private String extractMessage(String body) {
         try {

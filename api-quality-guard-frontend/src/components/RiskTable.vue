@@ -9,7 +9,7 @@ const riskType = (r) => (r === '高' ? 'danger' : r === '中' ? 'warning' : 'suc
 
 <template>
   <div class="risk-list">
-    <div v-for="item in data" :key="item.path" class="risk-row">
+    <div v-for="item in data" :key="item.apiId ?? item.method + item.path" class="risk-row">
       <div class="left">
         <span :class="methodClass(item.method)">{{ item.method }}</span>
         <div class="name-wrap">
