@@ -8,16 +8,37 @@ set -euo pipefail
 PLAN_ID="${1:?用法: quality-gate.sh <planId> [baseUrl]}"
 BASE_URL="${2:-http://localhost:8080}"
 MAX_WAIT_SECONDS="${MAX_WAIT_SECONDS:-300}"
+AQG_USERNAME="${AQG_USERNAME:-}"
+AQG_PASSWORD="${AQG_PASSWORD:-}"
+
+if [ -z "${AQG_USERNAME}" ] || [ -z "${AQG_PASSWORD}" ]; then
+  echo "需要设置 AQG_USERNAME 和 AQG_PASSWORD（平台登录账号）" >&2
+  exit 2
+fi
+
+echo "==> 登录平台账号 ${AQG_USERNAME}"
+LOGIN_BODY=$(jq -n --arg username "${AQG_USERNAME}" --arg password "${AQG_PASSWORD}" \
+  '{username: $username, password: $password}')
+LOGIN_RESPONSE=$(curl -sS -X POST "${BASE_URL}/api/auth/login" \
+  -H "Content-Type: application/json" -d "${LOGIN_BODY}")
+TOKEN=$(echo "${LOGIN_RESPONSE}" | jq -r '.data.token // empty' 2>/dev/null || true)
+if [ -z "${TOKEN}" ]; then
+  LOGIN_MESSAGE=$(echo "${LOGIN_RESPONSE}" | jq -r '.message // "未知错误"' 2>/dev/null || echo "响应无法解析")
+  echo "登录失败：${LOGIN_MESSAGE}" >&2
+  exit 2
+fi
+AUTH_HEADER="Authorization: Bearer ${TOKEN}"
 
 echo "==> 触发计划 #${PLAN_ID} 执行（${BASE_URL}）"
 RUN_ID=$(curl -fsS -X POST "${BASE_URL}/api/plans/${PLAN_ID}/runs" \
+  -H "${AUTH_HEADER}" \
   -H "Content-Type: application/json" -d '{}' | jq -r '.data.runId')
 echo "    任务 ID: ${RUN_ID}"
 
 echo "==> 轮询任务状态（超时 ${MAX_WAIT_SECONDS}s）"
 elapsed=0
 while true; do
-  STATUS=$(curl -fsS "${BASE_URL}/api/runs/${RUN_ID}" | jq -r '.data.status')
+  STATUS=$(curl -fsS -H "${AUTH_HEADER}" "${BASE_URL}/api/runs/${RUN_ID}" | jq -r '.data.status')
   echo "    [${elapsed}s] ${STATUS}"
   case "${STATUS}" in
     SUCCESS | FAILED) break ;;
@@ -37,6 +58,7 @@ done
 
 echo "==> 执行质量门禁检查"
 GATE=$(curl -fsS -X POST "${BASE_URL}/api/gates/check" \
+  -H "${AUTH_HEADER}" \
   -H "Content-Type: application/json" \
   -d "{\"runId\": ${RUN_ID}}")
 

@@ -20,5 +20,8 @@ jobs:
         env:
           # 在仓库 Settings → Variables 中配置被测平台地址，例如 http://your-host:8080
           AQG_BASE_URL: ${{ vars.AQG_BASE_URL }}
+          # 在仓库 Settings → Secrets 中配置平台登录账号
+          AQG_USERNAME: ${{ secrets.AQG_USERNAME }}
+          AQG_PASSWORD: ${{ secrets.AQG_PASSWORD }}
         run: |
           bash scripts/ci/quality-gate.sh "${{ inputs.plan_id }}" "${AQG_BASE_URL:-http://localhost:8080}"

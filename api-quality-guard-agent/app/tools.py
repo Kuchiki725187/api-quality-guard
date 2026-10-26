@@ -39,9 +39,12 @@ def build_tools(request: DiagnosisRequest) -> list[StructuredTool]:
 
 def _get(path: str) -> str:
     base_url = settings.platform_base_url.rstrip("/")
+    headers = {}
+    if settings.internal_token:
+        headers["X-Internal-Token"] = settings.internal_token
     try:
         with httpx.Client(timeout=settings.platform_timeout_seconds) as client:
-            response = client.get(base_url + path)
+            response = client.get(base_url + path, headers=headers)
         if response.status_code // 100 != 2:
             return _error_json(f"平台工具调用失败: HTTP {response.status_code}")
         return response.text

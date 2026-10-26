@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     platform_timeout_seconds: float = Field(
         default=10.0, validation_alias="AQG_PLATFORM_TIMEOUT_SECONDS"
     )
+    internal_token: str = Field(default="", validation_alias="AQG_INTERNAL_TOKEN")
 
 
 settings = Settings()

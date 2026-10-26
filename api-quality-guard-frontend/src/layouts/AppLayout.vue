@@ -1,9 +1,27 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
+
 const activeMenu = computed(() => route.path)
+const displayName = computed(() => auth.user?.displayName || auth.user?.username || '用户')
+const avatarText = computed(() => (displayName.value.charAt(0) || 'U').toUpperCase())
+const roleLabel = computed(() => (auth.isAdmin ? '管理员' : '普通用户'))
+
+async function onCommand(command) {
+  if (command === 'users') {
+    router.push('/system/users')
+    return
+  }
+  if (command === 'logout') {
+    await auth.logout()
+    router.replace('/login')
+  }
+}
 </script>
 
 <template>
@@ -51,6 +69,10 @@ const activeMenu = computed(() => route.path)
           <el-menu-item index="/ai/report">AI 质量报告</el-menu-item>
           <el-menu-item index="/ai/assistant">AI 辅助分析</el-menu-item>
         </el-sub-menu>
+        <el-menu-item v-if="auth.isAdmin" index="/system/users">
+          <el-icon><User /></el-icon>
+          <span>用户管理</span>
+        </el-menu-item>
         <el-menu-item index="/settings">
           <el-icon><Setting /></el-icon>
           <span>系统设置</span>
@@ -65,10 +87,28 @@ const activeMenu = computed(() => route.path)
           <el-badge :value="3" class="notice">
             <el-icon :size="18"><Bell /></el-icon>
           </el-badge>
-          <div class="user">
-            <el-avatar :size="30" class="avatar">K</el-avatar>
-            <span class="user-name">Kuchiki</span>
-          </div>
+          <el-dropdown trigger="click" @command="onCommand">
+            <div class="user">
+              <el-avatar :size="30" class="avatar">{{ avatarText }}</el-avatar>
+              <div class="user-meta">
+                <span class="user-name">{{ displayName }}</span>
+                <span class="user-role">{{ roleLabel }}</span>
+              </div>
+              <el-icon class="arrow"><ArrowDown /></el-icon>
+            </div>
+            <template #dropdown>
+              <el-dropdown-menu>
+                <el-dropdown-item v-if="auth.isAdmin" command="users">
+                  <el-icon><User /></el-icon>
+                  用户管理
+                </el-dropdown-item>
+                <el-dropdown-item command="logout" :divided="auth.isAdmin">
+                  <el-icon><SwitchButton /></el-icon>
+                  退出登录
+                </el-dropdown-item>
+              </el-dropdown-menu>
+            </template>
+          </el-dropdown>
         </div>
       </el-header>
       <el-main class="main">
@@ -173,6 +213,7 @@ const activeMenu = computed(() => route.path)
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  outline: none;
 }
 
 .avatar {
@@ -180,9 +221,25 @@ const activeMenu = computed(() => route.path)
   font-weight: 600;
 }
 
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
 .user-name {
   font-size: 13px;
   color: var(--aqg-text-secondary);
+}
+
+.user-role {
+  font-size: 11px;
+  color: var(--aqg-text-muted);
+}
+
+.arrow {
+  color: var(--aqg-text-muted);
+  font-size: 12px;
 }
 
 .main {

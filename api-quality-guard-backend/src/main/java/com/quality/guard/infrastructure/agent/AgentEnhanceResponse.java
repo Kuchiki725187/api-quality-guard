@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 
 /**
- * Agent 用例增强响应。
+ * Agent 用例增强响应
  */
 @Data
 @Builder

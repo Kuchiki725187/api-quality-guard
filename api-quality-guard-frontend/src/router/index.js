@@ -1,7 +1,19 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useAuthStore } from '@/stores/auth'
+import { getToken } from '@/utils/authSession'
 
 const routes = [
+  {
+    path: '/login',
+    component: () => import('@/views/auth/Login.vue'),
+    meta: { title: '登录', public: true },
+  },
+  {
+    path: '/register',
+    component: () => import('@/views/auth/Register.vue'),
+    meta: { title: '注册', public: true },
+  },
   {
     path: '/',
     component: AppLayout,
@@ -68,6 +80,11 @@ const routes = [
         meta: { title: 'AI 辅助分析' },
       },
       {
+        path: 'system/users',
+        component: () => import('@/views/system/Users.vue'),
+        meta: { title: '用户管理', requiresAdmin: true },
+      },
+      {
         path: 'settings',
         component: () => import('@/views/settings/Index.vue'),
         meta: { title: '系统设置' },
@@ -79,6 +96,26 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+router.beforeEach(async (to) => {
+  if (to.meta.public) {
+    return true
+  }
+  if (!getToken()) {
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+  const auth = useAuthStore()
+  try {
+    await auth.ensureUser()
+  } catch {
+    auth.clear()
+    return { path: '/login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.requiresAdmin && !auth.isAdmin) {
+    return { path: '/dashboard' }
+  }
+  return true
 })
 
 export default router

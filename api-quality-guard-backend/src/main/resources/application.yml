@@ -17,6 +17,15 @@ spring:
     locations: classpath:db/migration
     encoding: UTF-8
 
+  # Redis
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DATABASE:0}
+      timeout: 3s
+
 server:
   port: 8080
 
@@ -49,3 +58,12 @@ aqg:
   agent:
     base-url: ${AQG_AGENT_BASE_URL:http://localhost:8090}
     timeout-seconds: ${AQG_AGENT_TIMEOUT_SECONDS:120}
+  # Agent 回调 /api/agent-tools/** 的共享令牌（与 Agent 的 AQG_INTERNAL_TOKEN 一致）
+  internal-token: ${AQG_INTERNAL_TOKEN:}
+  auth:
+    session-ttl-minutes: ${AQG_AUTH_SESSION_TTL_MINUTES:30}
+    registration-enabled: ${AQG_AUTH_REGISTRATION_ENABLED:true}
+    # 启动时若管理员账号不存在则自动创建；测试可设为 false
+    seed-enabled: ${AQG_AUTH_SEED_ENABLED:true}
+    admin-username: ${AQG_ADMIN_USERNAME:admin}
+    admin-password: ${AQG_ADMIN_PASSWORD:admin123}
