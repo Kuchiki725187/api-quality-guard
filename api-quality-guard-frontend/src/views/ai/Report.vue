@@ -103,7 +103,7 @@ const feedbackType = (f) =>
               </el-tag>
             </div>
             <div class="diag-meta">
-              #{{ r.id }} · {{ r.modelName || '—' }} · {{ fmtTime(r.createdAt) }}
+              #{{ r.id }} · {{ fmtTime(r.createdAt) }}
             </div>
           </div>
           <el-empty

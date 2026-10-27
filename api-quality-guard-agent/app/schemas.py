@@ -1,5 +1,5 @@
 """与主平台约定的 HTTP契约"""
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -87,3 +87,31 @@ class EnhanceResponse(BaseModel):
     outputTokens: int | None = None
     durationMs: int
     rawOutput: str
+
+
+# ================= AI 助手问答 =================
+
+
+class ChatMessage(BaseModel):
+    """历史消息（只含最终 user/assistant 内容，不含工具轨迹）"""
+
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class ChatRequest(BaseModel):
+    """自然语言问答请求"""
+
+    question: str = Field(min_length=1, max_length=2000)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=12)
+
+
+class ChatResponse(BaseModel):
+    """问答响应，answer 为 Markdown 文本"""
+
+    answer: str
+    model: str
+    inputTokens: int | None = None
+    outputTokens: int | None = None
+    durationMs: int
+    rounds: int

@@ -8,10 +8,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.agent import diagnose
+from app.chat_agent import chat
 from app.config import settings
 from app.enhance_agent import enhance
 from app.errors import AgentError
-from app.schemas import DiagnosisRequest, EnhanceRequest
+from app.schemas import ChatRequest, DiagnosisRequest, EnhanceRequest
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
 logger = logging.getLogger("agent")
@@ -34,6 +35,11 @@ async def enhance_endpoint(request: EnhanceRequest):
     return await enhance(request)
 
 
+@app.post("/agent/chat")
+async def chat_endpoint(request: ChatRequest):
+    return await chat(request)
+
+
 @app.exception_handler(RequestValidationError)
 async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
     # 把校验明细与请求体长度打到日志并返回给调用方，便于定位 422 的具体原因
@@ -48,7 +54,7 @@ async def handle_validation_error(request: Request, exc: RequestValidationError)
 
 @app.exception_handler(AgentError)
 async def handle_agent_error(_: Request, exc: AgentError) -> JSONResponse:
-    logger.warning("诊断失败: %s", exc)
+    logger.warning("Agent 处理失败: %s", exc)
     return JSONResponse(status_code=502, content={"message": str(exc)})
 
 
@@ -59,9 +65,6 @@ async def handle_unexpected(_: Request, exc: Exception) -> JSONResponse:
 
 
 if __name__ == "__main__":
-    # 本地启动入口（等价于: uvicorn app.main:app --host 0.0.0.0 --port 8090）
-    # 注意：必须在 api-quality-guard-agent 目录下执行 python -m app.main，
-    # 否则 .env 与 app 包路径都可能找不到。
     import uvicorn
 
     uvicorn.run("app.main:app", host="0.0.0.0", port=8090)

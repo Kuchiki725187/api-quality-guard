@@ -14,11 +14,7 @@ const confidencePercent = (c) => Math.round((c ?? 0) * 100)
         <code class="api-path">结果 #{{ diag.testResultId }}</code>
       </div>
       <div class="head-right">
-        <el-tag type="info" effect="plain" size="small">{{ diag.modelName || '—' }}</el-tag>
-        <span class="meta">
-          {{ diag.inputTokens ?? 0 }} / {{ diag.outputTokens ?? 0 }} tokens ·
-          {{ diag.durationMs ?? 0 }} ms
-        </span>
+        <span class="meta">耗时 {{ diag.durationMs ?? 0 }} ms</span>
       </div>
     </div>
 

@@ -67,3 +67,6 @@ aqg:
     seed-enabled: ${AQG_AUTH_SEED_ENABLED:true}
     admin-username: ${AQG_ADMIN_USERNAME:admin}
     admin-password: ${AQG_ADMIN_PASSWORD:admin123}
+  assistant:
+    # AI 助手对话历史保留时长
+    history-ttl-minutes: ${AQG_ASSISTANT_HISTORY_TTL_MINUTES:120}

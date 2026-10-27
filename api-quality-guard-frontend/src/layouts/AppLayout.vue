@@ -84,9 +84,6 @@ async function onCommand(command) {
       <el-header class="header">
         <div class="header-title">{{ route.meta.title }}</div>
         <div class="header-right">
-          <el-badge :value="3" class="notice">
-            <el-icon :size="18"><Bell /></el-icon>
-          </el-badge>
           <el-dropdown trigger="click" @command="onCommand">
             <div class="user">
               <el-avatar :size="30" class="avatar">{{ avatarText }}</el-avatar>
@@ -200,12 +197,6 @@ async function onCommand(command) {
   display: flex;
   align-items: center;
   gap: 22px;
-}
-
-.notice {
-  cursor: pointer;
-  color: var(--aqg-text-secondary);
-  display: inline-flex;
 }
 
 .user {
