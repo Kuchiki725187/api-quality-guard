@@ -31,7 +31,7 @@ async def chat(request: ChatRequest) -> ChatResponse:
             rounds=1,
         )
     #初始化工具和大模型
-    tools = build_chat_tools()
+    tools = build_chat_tools(request.userId)
     tools_by_name = {tool.name: tool for tool in tools}
     llm = build_llm()
     #让模型具备工具调用的能力

@@ -3,6 +3,7 @@ package com.quality.guard.module.testexec.runner.scheduler;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.quality.guard.common.exception.BusinessException;
 import com.quality.guard.common.result.ResultCode;
+import com.quality.guard.module.auth.model.UserContext;
 import com.quality.guard.module.scoring.calculator.ScoreCalculator;
 import com.quality.guard.module.testexec.runner.engine.TestExecutionEngine;
 import com.quality.guard.module.testexec.runner.entity.TestRun;
@@ -38,17 +39,31 @@ public class PlanRunExecutor {
     private final ScoreCalculator scoreCalculator;
     private final ThreadPoolExecutor planRunExecutor;
 
-    /** 提交 run 的执行任务（立即返回；任务在线程池中异步执行） */
+    /** 提交 run 的执行任务（兼容直接调用：使用当前线程的属主上下文） */
     public void submit(Long runId, List<Long> caseIds, String baseUrlOverride) {
+        submit(runId, caseIds, baseUrlOverride, UserContext.currentOrSystem());
+    }
+
+    /** 提交 run 的执行任务（立即返回；任务在线程池中异步执行） */
+    public void submit(Long runId, List<Long> caseIds, String baseUrlOverride, long ownerId) {
         try {
-            planRunExecutor.execute(() -> executeRun(runId, caseIds, baseUrlOverride));
+            planRunExecutor.execute(() -> executeRun(runId, caseIds, baseUrlOverride, ownerId));
         } catch (RejectedExecutionException e) {
             throw new BusinessException(ResultCode.SERVICE_UNAVAILABLE, "执行队列已满，请稍后重试");
         }
     }
 
-    /** 执行一个 run 的全部用例（线程池任务体） */
+    /** 执行一个 run 的全部用例（兼容直接调用：使用当前线程的属主上下文） */
     public void executeRun(Long runId, List<Long> caseIds, String baseUrlOverride) {
+        executeRun(runId, caseIds, baseUrlOverride, UserContext.currentOrSystem());
+    }
+
+    /** 执行一个 run 的全部用例（线程池任务体，显式携带属主） */
+    public void executeRun(Long runId, List<Long> caseIds, String baseUrlOverride, long ownerId) {
+        UserContext.runAs(ownerId, () -> doExecuteRun(runId, caseIds, baseUrlOverride, ownerId));
+    }
+
+    private void doExecuteRun(Long runId, List<Long> caseIds, String baseUrlOverride, long ownerId) {
         try {
             // 1. 状态抢占：PENDING → RUNNING（条件更新，affected=0 说明已取消或重复执行）
             int affectedRows = testRunMapper.update(null, new LambdaUpdateWrapper<TestRun>()
@@ -65,7 +80,7 @@ public class PlanRunExecutor {
             cancellationRegistry.register(runId);
 
             // 3. 并发分发并等待完成
-            executeCases(runId, caseIds, baseUrlOverride);
+            executeCases(runId, caseIds, baseUrlOverride, ownerId);
 
             // 4. 从明细聚合统计：counts == 明细条数，满足"统计与明细一致"
             Map<String, Integer> counts = loadStatusCounts(runId);
@@ -114,7 +129,7 @@ public class PlanRunExecutor {
         }
     }
 
-    private void executeCases(Long runId, List<Long> caseIds, String baseUrlOverride) {
+    private void executeCases(Long runId, List<Long> caseIds, String baseUrlOverride, long ownerId) {
         List<Future<?>> futures = new ArrayList<>();
         for (Long caseId : caseIds) {
             // 协作式取消：已请求取消则不再提交剩余用例
@@ -122,7 +137,7 @@ public class PlanRunExecutor {
                 log.info("run {} 已请求取消，停止提交剩余用例", runId);
                 break;
             }
-            Future<?> future = planRunExecutor.submit(() -> {
+            Future<?> future = planRunExecutor.submit(() -> UserContext.runAs(ownerId, () -> {
                 try {
                     testExecutionEngine.executeCaseInRun(caseId, baseUrlOverride, runId);
                 } catch (RuntimeException e) {
@@ -133,7 +148,7 @@ public class PlanRunExecutor {
                             null, null, List.of(),
                             "执行异常: " + e.getMessage(), 0);
                 }
-            });
+            }));
             futures.add(future);
         }
 

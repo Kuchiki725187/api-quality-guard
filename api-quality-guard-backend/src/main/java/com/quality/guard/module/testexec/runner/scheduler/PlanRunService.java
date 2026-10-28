@@ -7,6 +7,7 @@ import com.quality.guard.module.testexec.plan.dto.PlanRunSubmitDTO;
 import com.quality.guard.module.testexec.plan.entity.TestPlan;
 import com.quality.guard.module.testexec.plan.mapper.PlanCaseMapper;
 import com.quality.guard.module.testexec.plan.mapper.TestPlanMapper;
+import com.quality.guard.module.auth.model.UserContext;
 import com.quality.guard.module.testexec.runner.entity.TestRun;
 import com.quality.guard.module.testexec.runner.mapper.TestRunMapper;
 import com.quality.guard.module.testexec.runner.vo.TestRunVO;
@@ -42,8 +43,9 @@ public class PlanRunService {
 
         TestRun pendingRun = createPendingRun(planId, caseIds.size());
         Long runId = pendingRun.getId();
+        long ownerId = UserContext.currentOrSystem();
         try {
-            planRunExecutor.submit(runId, caseIds, baseUrlOverride(dto));
+            planRunExecutor.submit(runId, caseIds, baseUrlOverride(dto), ownerId);
         } catch (RuntimeException e) {
             // 提交失败（如线程池队列满返回 503）：把 run 置为 ERROR，避免永远停在 PENDING
             testRunMapper.update(null, new LambdaUpdateWrapper<TestRun>()

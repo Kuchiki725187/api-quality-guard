@@ -17,4 +17,7 @@ public class AgentChatRequest {
     private String question;
 
     private List<AgentChatMessage> history;
+
+    /** 请求用户；Agent 工具回调据此按用户隔离数据 */
+    private Long userId;
 }

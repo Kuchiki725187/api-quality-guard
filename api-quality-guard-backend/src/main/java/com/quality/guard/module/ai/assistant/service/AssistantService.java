@@ -34,7 +34,8 @@ public class AssistantService {
     public ChatAnswerVO chat(CurrentUser user, String message) {
         String question = message.trim();
         List<ChatExchange> exchanges = historyStore.load(user.getUserId());
-        AgentChatRequest request = new AgentChatRequest(question, buildAgentHistory(exchanges));
+        AgentChatRequest request = new AgentChatRequest(
+                question, buildAgentHistory(exchanges), user.getUserId());
         AgentChatResponse response = chatAgentClient.chat(request);
         if (!StringUtils.hasText(response.getAnswer())) {
             throw new BusinessException(ResultCode.SERVICE_UNAVAILABLE, "AI 助手未返回内容");

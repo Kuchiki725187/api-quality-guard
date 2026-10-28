@@ -3,6 +3,7 @@ package com.quality.guard.module.auth.interceptor;
 import com.quality.guard.common.exception.BusinessException;
 import com.quality.guard.common.result.ResultCode;
 import com.quality.guard.module.auth.model.AuthConstants;
+import com.quality.guard.module.auth.model.UserContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +37,20 @@ public class InternalTokenInterceptor implements HandlerInterceptor {
                 internalToken.getBytes(StandardCharsets.UTF_8))) {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "内部访问令牌无效");
         }
+        String userIdHeader = request.getHeader(AuthConstants.INTERNAL_USER_HEADER);
+        if (!StringUtils.hasText(userIdHeader)) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "缺少内部调用用户上下文");
+        }
+        long userId;
+        try {
+            userId = Long.parseLong(userIdHeader.trim());
+        } catch (NumberFormatException e) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "内部调用用户上下文非法");
+        }
+        if (userId <= 0) {
+            throw new BusinessException(ResultCode.UNAUTHORIZED, "内部调用用户上下文非法");
+        }
+        UserContext.set(userId);
         return true;
     }
 }

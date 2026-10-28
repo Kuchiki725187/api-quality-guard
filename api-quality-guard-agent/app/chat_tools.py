@@ -6,10 +6,10 @@ from langchain_core.tools import StructuredTool
 from app.platform_client import get_limited
 
 
-def build_chat_tools() -> list[StructuredTool]:
+def build_chat_tools(user_id: int | None = None) -> list[StructuredTool]:
     def platform_report() -> str:
         """获取平台总览与四维质量评分"""
-        return get_limited("/api/agent-tools/platform-report")
+        return get_limited("/api/agent-tools/platform-report", user_id)
 
     def search_apis(keyword: str = "", limit: int = 10) -> str:
         """按名称或路径搜索接口"""
@@ -17,25 +17,25 @@ def build_chat_tools() -> list[StructuredTool]:
         params = {"limit": safe_limit}
         if keyword:
             params["keyword"] = keyword[:100]
-        return get_limited(f"/api/agent-tools/apis?{urlencode(params)}")
+        return get_limited(f"/api/agent-tools/apis?{urlencode(params)}", user_id)
 
     def api_detail(apiId: int) -> str:
         """按 apiId 查询接口定义摘要"""
-        return get_limited(f"/api/agent-tools/api-detail/{apiId}")
+        return get_limited(f"/api/agent-tools/api-detail/{apiId}", user_id)
 
     def run_report(runId: int) -> str:
         """按 runId 查询执行报告"""
-        return get_limited(f"/api/agent-tools/runs/{runId}")
+        return get_limited(f"/api/agent-tools/runs/{runId}", user_id)
 
     def recent_failures(limit: int = 10) -> str:
         """查询最近失败/异常的测试结果"""
         safe_limit = max(1, min(limit, 20))
-        return get_limited(f"/api/agent-tools/failures?limit={safe_limit}")
+        return get_limited(f"/api/agent-tools/failures?limit={safe_limit}", user_id)
 
     def case_history(caseId: int, limit: int = 5) -> str:
         """按 caseId 查询最近执行历史"""
         safe_limit = max(1, min(limit, 10))
-        return get_limited(f"/api/agent-tools/case-history/{caseId}?limit={safe_limit}")
+        return get_limited(f"/api/agent-tools/case-history/{caseId}?limit={safe_limit}", user_id)
 
     return [
         StructuredTool.from_function(

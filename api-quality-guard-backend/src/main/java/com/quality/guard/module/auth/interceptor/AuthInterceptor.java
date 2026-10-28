@@ -4,6 +4,7 @@ import com.quality.guard.common.exception.BusinessException;
 import com.quality.guard.common.result.ResultCode;
 import com.quality.guard.module.auth.model.AuthConstants;
 import com.quality.guard.module.auth.model.CurrentUser;
+import com.quality.guard.module.auth.model.UserContext;
 import com.quality.guard.module.auth.session.RedisSessionStore;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -39,6 +40,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         if (currentUser == null) {
             throw new BusinessException(ResultCode.UNAUTHORIZED, "登录已过期，请重新登录");
         }
+        UserContext.set(currentUser.getUserId());
         request.setAttribute(AuthConstants.CURRENT_USER_ATTRIBUTE, currentUser);
         request.setAttribute(AuthConstants.AUTH_TOKEN_ATTRIBUTE, token);
         return true;

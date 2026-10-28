@@ -1,6 +1,7 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
@@ -12,7 +13,60 @@ const displayName = computed(() => auth.user?.displayName || auth.user?.username
 const avatarText = computed(() => (displayName.value.charAt(0) || 'U').toUpperCase())
 const roleLabel = computed(() => (auth.isAdmin ? '管理员' : '普通用户'))
 
+const passwordVisible = ref(false)
+const passwordSaving = ref(false)
+const passwordFormRef = ref(null)
+const passwordForm = reactive({ currentPassword: '', newPassword: '', confirmPassword: '' })
+
+const validateConfirmPassword = (rule, value, callback) => {
+  if (value !== passwordForm.newPassword) {
+    callback(new Error('两次输入的新密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const passwordRules = {
+  currentPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
+  newPassword: [
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 8, max: 32, message: '新密码长度为 8-32 位', trigger: 'blur' },
+  ],
+  confirmPassword: [
+    { required: true, message: '请再次输入新密码', trigger: 'blur' },
+    { validator: validateConfirmPassword, trigger: 'blur' },
+  ],
+}
+
+function openPasswordDialog() {
+  passwordForm.currentPassword = ''
+  passwordForm.newPassword = ''
+  passwordForm.confirmPassword = ''
+  passwordVisible.value = true
+  passwordFormRef.value?.clearValidate()
+}
+
+async function submitPassword() {
+  const valid = await passwordFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  passwordSaving.value = true
+  try {
+    await auth.changePassword(passwordForm.currentPassword, passwordForm.newPassword)
+    ElMessage.success('密码已修改，请重新登录')
+    passwordVisible.value = false
+    router.replace('/login')
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    passwordSaving.value = false
+  }
+}
+
 async function onCommand(command) {
+  if (command === 'password') {
+    openPasswordDialog()
+    return
+  }
   if (command === 'users') {
     router.push('/system/users')
     return
@@ -99,7 +153,11 @@ async function onCommand(command) {
                   <el-icon><User /></el-icon>
                   用户管理
                 </el-dropdown-item>
-                <el-dropdown-item command="logout" :divided="auth.isAdmin">
+                <el-dropdown-item command="password">
+                  <el-icon><Lock /></el-icon>
+                  修改密码
+                </el-dropdown-item>
+                <el-dropdown-item command="logout" divided>
                   <el-icon><SwitchButton /></el-icon>
                   退出登录
                 </el-dropdown-item>
@@ -113,6 +171,37 @@ async function onCommand(command) {
       </el-main>
     </el-container>
   </el-container>
+
+  <el-dialog v-model="passwordVisible" title="修改密码" width="420px">
+    <el-form
+      ref="passwordFormRef"
+      :model="passwordForm"
+      :rules="passwordRules"
+      label-position="top"
+    >
+      <el-form-item label="当前密码" prop="currentPassword">
+        <el-input v-model="passwordForm.currentPassword" type="password" show-password />
+      </el-form-item>
+      <el-form-item label="新密码" prop="newPassword">
+        <el-input
+          v-model="passwordForm.newPassword"
+          type="password"
+          show-password
+          placeholder="8-32 位"
+        />
+      </el-form-item>
+      <el-form-item label="确认新密码" prop="confirmPassword">
+        <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
+      </el-form-item>
+    </el-form>
+    <div class="pwd-hint">修改成功后当前账号的所有登录会话都会失效，需要重新登录。</div>
+    <template #footer>
+      <el-button @click="passwordVisible = false">取消</el-button>
+      <el-button type="primary" :loading="passwordSaving" @click="submitPassword">
+        确认修改
+      </el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -237,5 +326,12 @@ async function onCommand(command) {
   background: var(--aqg-bg);
   padding: 20px;
   overflow-y: auto;
+}
+
+.pwd-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--aqg-text-muted);
 }
 </style>

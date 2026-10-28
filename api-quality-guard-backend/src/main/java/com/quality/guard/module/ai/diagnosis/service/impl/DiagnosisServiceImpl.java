@@ -15,6 +15,7 @@ import com.quality.guard.module.ai.diagnosis.entity.AiDiagnosis;
 import com.quality.guard.module.ai.diagnosis.mapper.AiDiagnosisMapper;
 import com.quality.guard.module.ai.diagnosis.service.DiagnosisService;
 import com.quality.guard.module.ai.diagnosis.vo.AiDiagnosisVO;
+import com.quality.guard.module.auth.model.UserContext;
 import com.quality.guard.module.testexec.casegen.entity.TestCase;
 import com.quality.guard.module.testexec.casegen.mapper.TestCaseMapper;
 import com.quality.guard.module.testexec.definition.entity.ApiDefinition;
@@ -68,6 +69,7 @@ public class DiagnosisServiceImpl implements DiagnosisService {
         }
         //组装发送给agent的请求体
         AgentDiagnosisRequest request = AgentDiagnosisRequest.builder()
+                .userId(UserContext.currentOrSystem())
                 .caseId(testCase.getId())
                 .apiId(api.getId())
                 .caseName(testCase.getName())

@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.quality.guard.module.auth.entity.SysUser;
 import com.quality.guard.module.auth.mapper.SysUserMapper;
 import com.quality.guard.module.auth.model.AuthConstants;
+import com.quality.guard.module.auth.model.UserContext;
 import com.quality.guard.module.testexec.definition.entity.ApiDefinition;
 import com.quality.guard.module.testexec.definition.mapper.ApiDefinitionMapper;
 import org.junit.jupiter.api.AfterEach;
@@ -203,17 +204,49 @@ class AuthIntegrationTest {
     }
 
     @Test
-    void agentToolsRequireInternalTokenInsteadOfUserSession() throws Exception {
+    void changePasswordInvalidatesAllSessions() throws Exception {
+        SysUser user = createUser(AuthConstants.ROLE_USER, "userPass123");
+        String token = login(user.getUsername(), "userPass123");
+
+        String wrongBody = objectMapper.writeValueAsString(Map.of(
+                "currentPassword", "wrongPass123",
+                "newPassword", "newPass456"));
+        mockMvc.perform(put("/api/auth/password")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(wrongBody))
+                .andExpect(status().isBadRequest());
+
+        String body = objectMapper.writeValueAsString(Map.of(
+                "currentPassword", "userPass123",
+                "newPassword", "newPass456"));
+        mockMvc.perform(put("/api/auth/password")
+                        .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, bearer(token)))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(loginRequest(user.getUsername(), "userPass123"))
+                .andExpect(status().isUnauthorized());
+        String newToken = login(user.getUsername(), "newPass456");
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, bearer(newToken)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void agentToolsRequireInternalTokenAndUserContextInsteadOfUserSession() throws Exception {
+        SysUser user = createUser(AuthConstants.ROLE_USER, "userPass123");
         ApiDefinition api = new ApiDefinition();
         api.setName("IT-agent-api");
         api.setHttpMethod("GET");
         api.setPath("/it/agent");
-        apiDefinitionMapper.insert(api);
+        UserContext.runAs(user.getId(), () -> apiDefinitionMapper.insert(api));
 
         mockMvc.perform(get("/api/agent-tools/api-detail/{id}", api.getId()))
                 .andExpect(status().isUnauthorized());
 
-        SysUser user = createUser(AuthConstants.ROLE_USER, "userPass123");
         String token = login(user.getUsername(), "userPass123");
         mockMvc.perform(get("/api/agent-tools/api-detail/{id}", api.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearer(token)))
@@ -221,6 +254,11 @@ class AuthIntegrationTest {
 
         mockMvc.perform(get("/api/agent-tools/api-detail/{id}", api.getId())
                         .header(AuthConstants.INTERNAL_TOKEN_HEADER, "test-internal-token"))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/agent-tools/api-detail/{id}", api.getId())
+                        .header(AuthConstants.INTERNAL_TOKEN_HEADER, "test-internal-token")
+                        .header(AuthConstants.INTERNAL_USER_HEADER, String.valueOf(user.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("IT-agent-api"));
     }

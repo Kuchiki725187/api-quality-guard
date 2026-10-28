@@ -11,11 +11,13 @@ from app.config import settings
 MAX_TOOL_CHARS = 8000
 
 
-def get_text(path: str) -> str:
+def get_text(path: str, user_id: int | None = None) -> str:
     base_url = settings.platform_base_url.rstrip("/")
     headers = {}
     if settings.internal_token:
         headers["X-Internal-Token"] = settings.internal_token
+    if user_id is not None:
+        headers["X-AQG-UserId"] = str(user_id)
     try:
         with httpx.Client(timeout=settings.platform_timeout_seconds) as client:
             response = client.get(base_url + path, headers=headers)
@@ -28,9 +30,10 @@ def get_text(path: str) -> str:
         return error_json(f"平台工具调用异常: {exc}")
 
 
-def get_limited(path: str, max_chars: int = MAX_TOOL_CHARS) -> str:
+def get_limited(path: str, user_id: int | None = None,
+                max_chars: int = MAX_TOOL_CHARS) -> str:
     """限制进入模型上下文的工具结果长度。"""
-    text = get_text(path)
+    text = get_text(path, user_id)
     if len(text) <= max_chars:
         return text
     return text[:max_chars] + "…(truncated)"

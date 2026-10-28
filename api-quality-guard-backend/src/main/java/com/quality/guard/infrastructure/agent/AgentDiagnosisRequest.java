@@ -17,6 +17,9 @@ import java.util.List;
 @AllArgsConstructor
 public class AgentDiagnosisRequest {
 
+    /** 请求用户；Agent 工具回调据此按用户隔离数据 */
+    private Long userId;
+
     private Long caseId;
 
     private Long apiId;

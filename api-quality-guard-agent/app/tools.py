@@ -12,12 +12,15 @@ def build_tools(request: DiagnosisRequest) -> list[StructuredTool]:
 
     def api_detail() -> str:
         """API_DETAIL：查询当前接口的定义摘要（方法、路径、参数结构、响应结构）"""
-        return _get(f"/api/agent-tools/api-detail/{request.apiId}")
+        return _get(f"/api/agent-tools/api-detail/{request.apiId}", request.userId)
 
     def case_history(limit: int = 5) -> str:
         """CASE_HISTORY：查询该测试用例最近若干次执行结果（状态、耗时、失败断言摘要）limit 最大 10"""
         safe_limit = max(1, min(limit, 10))
-        return _get(f"/api/agent-tools/case-history/{request.caseId}?limit={safe_limit}")
+        return _get(
+            f"/api/agent-tools/case-history/{request.caseId}?limit={safe_limit}",
+            request.userId,
+        )
 
     return [
         StructuredTool.from_function(
@@ -34,5 +37,5 @@ def build_tools(request: DiagnosisRequest) -> list[StructuredTool]:
     ]
 
 
-def _get(path: str) -> str:
-    return get_text(path)
+def _get(path: str, user_id: int | None = None) -> str:
+    return get_text(path, user_id)

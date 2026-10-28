@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class DiagnosisRequest(BaseModel):
     """主平台传入的诊断上下文：Agent 无状态，所需证据全部随请求携带"""
 
+    userId: int | None = None
     caseId: int
     apiId: int
     caseName: str | None = None
@@ -102,6 +103,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     """自然语言问答请求"""
 
+    userId: int | None = None
     question: str = Field(min_length=1, max_length=2000)
     history: list[ChatMessage] = Field(default_factory=list, max_length=12)
 

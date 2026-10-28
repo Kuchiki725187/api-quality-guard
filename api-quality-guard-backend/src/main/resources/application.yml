@@ -67,6 +67,8 @@ aqg:
     seed-enabled: ${AQG_AUTH_SEED_ENABLED:true}
     admin-username: ${AQG_ADMIN_USERNAME:admin}
     admin-password: ${AQG_ADMIN_PASSWORD:admin123}
+    # 启动时把没有 owner_id 的历史业务数据归属到管理员
+    owner-backfill-enabled: ${AQG_OWNER_BACKFILL_ENABLED:true}
   assistant:
     # AI 助手对话历史保留时长
     history-ttl-minutes: ${AQG_ASSISTANT_HISTORY_TTL_MINUTES:120}

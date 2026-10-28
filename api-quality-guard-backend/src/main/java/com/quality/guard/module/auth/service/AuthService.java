@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.quality.guard.common.exception.BusinessException;
 import com.quality.guard.common.result.ResultCode;
 import com.quality.guard.module.auth.config.AuthProperties;
+import com.quality.guard.module.auth.dto.ChangePasswordDTO;
 import com.quality.guard.module.auth.dto.LoginDTO;
 import com.quality.guard.module.auth.dto.RegisterDTO;
 import com.quality.guard.module.auth.entity.SysUser;
@@ -78,6 +79,23 @@ public class AuthService {
     public UserVO me(CurrentUser currentUser) {
         return new UserVO(currentUser.getUserId(), currentUser.getUsername(),
                 currentUser.getDisplayName(), currentUser.getRole());
+    }
+
+    public void changePassword(CurrentUser currentUser, ChangePasswordDTO dto) {
+        SysUser user = sysUserMapper.selectById(currentUser.getUserId());
+        if (user == null) {
+            throw new BusinessException(ResultCode.NOT_FOUND, "用户不存在");
+        }
+        if (!passwordEncoder.matches(dto.getCurrentPassword(), user.getPasswordHash())) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "当前密码不正确");
+        }
+        if (dto.getNewPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
+            throw new BusinessException(ResultCode.BAD_REQUEST, "新密码过长");
+        }
+        user.setPasswordHash(passwordEncoder.encode(dto.getNewPassword()));
+        sysUserMapper.updateById(user);
+        // 修改密码后所有设备下线，前端随后跳回登录页
+        sessionStore.deleteAllForUser(currentUser.getUserId());
     }
 
     private SysUser findByUsername(String username) {

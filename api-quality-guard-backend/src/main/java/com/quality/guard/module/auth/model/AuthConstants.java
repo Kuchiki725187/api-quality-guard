@@ -13,6 +13,7 @@ public final class AuthConstants {
 
     public static final String BEARER_PREFIX = "Bearer ";
     public static final String INTERNAL_TOKEN_HEADER = "X-Internal-Token";
+    public static final String INTERNAL_USER_HEADER = "X-AQG-UserId";
 
     private AuthConstants() {
     }

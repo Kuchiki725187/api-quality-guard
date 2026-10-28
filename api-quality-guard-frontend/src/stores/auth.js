@@ -37,6 +37,11 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async changePassword(currentPassword, newPassword) {
+      await http.put('/auth/password', { currentPassword, newPassword })
+      this.clear()
+    },
+
     clear() {
       this.token = null
       this.user = null
