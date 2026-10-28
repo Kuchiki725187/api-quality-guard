@@ -14,8 +14,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 测试用例，对应 test_case 表。
- * request_params / assertion_rules 为 JSON 列，经 JacksonTypeHandler 映射为对象。
+ * 测试用例，对应 test_case 表
+ * request_params / assertion_rules 为 JSON 列，经 JacksonTypeHandler 映射为对象
  */
 @Data
 @TableName(value = "test_case", autoResultMap = true)

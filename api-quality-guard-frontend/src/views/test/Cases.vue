@@ -1,19 +1,32 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import TestResult from '@/components/TestResult.vue'
 import http from '@/api/http'
 
+const route = useRoute()
+const router = useRouter()
 const apis = ref([])
 const selectedApiId = ref(null)
 const selectedApi = computed(() => apis.value.find((a) => a.id === selectedApiId.value))
 
-onMounted(async () => {
+async function loadApis() {
   try {
-    const data = await http.get('/apis', { params: { page: 1, pageSize: 100 } })
+    const data = await http.get('/apis', { params: { page: 1, pageSize: 200 } })
     apis.value = data.records
   } catch (e) {
     ElMessage.error(`加载接口列表失败：${e.message}`)
+  }
+}
+
+onMounted(async () => {
+  await loadApis()
+  const queryApiId = Number(route.query.apiId)
+  if (Number.isFinite(queryApiId) && apis.value.some((api) => api.id === queryApiId)) {
+    selectedApiId.value = queryApiId
+  } else if (apis.value.length) {
+    selectedApiId.value = apis.value[0].id
   }
 })
 
@@ -26,7 +39,29 @@ const strategyOptions = [
 ]
 const strategies = ref(['NORMAL', 'REQUIRED_MISSING', 'TYPE_MISMATCH', 'BOUNDARY'])
 const generating = ref(false)
-const generatedCases = ref([])
+const caseList = ref([])
+const caseTotal = ref(0)
+const casesLoading = ref(false)
+
+async function loadCases() {
+  if (!selectedApiId.value) {
+    caseList.value = []
+    caseTotal.value = 0
+    return
+  }
+  casesLoading.value = true
+  try {
+    const data = await http.get('/cases', {
+      params: { page: 1, pageSize: 200, apiId: selectedApiId.value },
+    })
+    caseList.value = data.records || []
+    caseTotal.value = data.total || 0
+  } catch (e) {
+    ElMessage.error(e.message)
+  } finally {
+    casesLoading.value = false
+  }
+}
 
 async function generate() {
   if (!selectedApiId.value) {
@@ -43,7 +78,7 @@ async function generate() {
       apiId: selectedApiId.value,
       strategies: strategies.value,
     })
-    generatedCases.value = data.cases
+    await loadCases()
     ElMessage.success(`生成 ${data.generatedCount} 条用例（重复生成会幂等更新同名人造用例）`)
   } catch (e) {
     ElMessage.error(e.message)
@@ -82,7 +117,7 @@ async function aiGenerate() {
       },
       { timeout: 150000 },
     )
-    generatedCases.value = data.cases
+    await loadCases()
     aiVisible.value = false
     ElMessage.success(`AI 生成 ${data.generatedCount} 条候选用例（来源标记为 AI，建议人工确认）`)
   } catch (e) {
@@ -185,13 +220,23 @@ const operatorOptions = [
   'EQUALS', 'NOT_EQUALS', 'EXISTS', 'NOT_EXISTS', 'CONTAINS', 'GREATER_THAN', 'LESS_THAN',
 ]
 
-// 选择接口后自动填充：用例名称、请求方法/URL、请求参数（按 schema 生成合法预填值）
-watch(selectedApiId, () => {
-  if (!selectedApi.value) return
-  form.name = `${selectedApi.value.name}-手动用例`
-  form.method = selectedApi.value.httpMethod
-  form.url = (selectedApi.value.baseUrl ?? '') + selectedApi.value.path
-  form.params = JSON.stringify(buildDefaultParams(selectedApi.value), null, 2)
+// 选择接口后：同步 URL、加载已落库用例，并预fill手动创建表单
+watch(selectedApiId, (id) => {
+  if (!id) {
+    caseList.value = []
+    caseTotal.value = 0
+    return
+  }
+  if (String(route.query.apiId) !== String(id)) {
+    router.replace({ query: { ...route.query, apiId: id } })
+  }
+  if (selectedApi.value) {
+    form.name = `${selectedApi.value.name}-手动用例`
+    form.method = selectedApi.value.httpMethod
+    form.url = (selectedApi.value.baseUrl ?? '') + selectedApi.value.path
+    form.params = JSON.stringify(buildDefaultParams(selectedApi.value), null, 2)
+  }
+  loadCases()
 })
 
 function openCreateDialog() {
@@ -253,6 +298,9 @@ function buildBodyValue(schema) {
 const assertionLabel = (type) =>
   ({ STATUS_CODE: '状态码', JSON_FIELD: 'JSON 字段', RESPONSE_TIME: '响应时间' })[type] ?? type
 
+const sourceTagType = (type) =>
+  ({ AI: 'warning', RULE: 'primary', MANUAL: 'info' })[type] ?? 'info'
+
 function addAssertion(type) {
   if (type === 'STATUS_CODE') {
     assertions.value.push({ type, expected: 200 })
@@ -301,6 +349,7 @@ async function saveCase() {
     ElMessage.success('测试用例已保存')
     lastSaved.value = { id: saved.id, name: form.name }
     dialogVisible.value = false
+    await loadCases()
   } catch (e) {
     ElMessage.error(e.message)
   } finally {
@@ -313,8 +362,8 @@ async function saveCase() {
   <div class="page">
     <div class="panel">
       <h3 class="panel-title">
-        <span>规则生成</span>
-        <span class="hint">基于接口约束自动生成用例；每条用例的生成说明可追溯取值依据</span>
+        <span>用例生成与管理</span>
+        <span class="hint">生成或手动创建后自动保存；刷新页面会按选中接口回显已保存用例</span>
       </h3>
       <div class="gen-row">
         <el-select
@@ -336,6 +385,10 @@ async function saveCase() {
           </el-checkbox>
         </el-checkbox-group>
         <el-button type="primary" :loading="generating" @click="generate">生成用例</el-button>
+        <el-button plain :loading="casesLoading" :disabled="!selectedApiId" @click="loadCases">
+          <el-icon><Refresh /></el-icon>
+          <span>刷新用例</span>
+        </el-button>
         <el-button @click="openCreateDialog">手动新建用例</el-button>
         <el-button type="success" plain @click="openAiDialog">
           <el-icon><MagicStick /></el-icon>
@@ -356,16 +409,24 @@ async function saveCase() {
         </el-button>
       </div>
 
+      <div v-if="selectedApiId" class="list-head">
+        <span class="list-title">用例列表</span>
+        <span class="hint">
+          共 {{ caseTotal }} 条{{ caseTotal > caseList.length ? '（仅展示前 200 条）' : '' }}
+        </span>
+      </div>
+
       <el-table
-        v-if="generatedCases.length"
-        :data="generatedCases"
+        v-if="selectedApiId"
+        v-loading="casesLoading"
+        :data="caseList"
         class="dark-table"
-        style="margin-top: 14px"
+        style="margin-top: 10px"
       >
         <el-table-column prop="name" label="用例名称" min-width="220" />
         <el-table-column label="来源" width="90">
           <template #default="{ row }">
-            <el-tag size="small" :type="row.generationType === 'AI' ? 'warning' : 'info'" effect="plain">
+            <el-tag size="small" :type="sourceTagType(row.generationType)" effect="plain">
               {{ row.generationType }}
             </el-tag>
           </template>
@@ -388,7 +449,11 @@ async function saveCase() {
             </el-button>
           </template>
         </el-table-column>
+        <template #empty>
+          <el-empty description="该接口还没有用例，点击上方生成或手动新建" :image-size="60" />
+        </template>
       </el-table>
+      <div v-else class="list-empty-tip">请选择接口查看已保存的用例</div>
     </div>
 
     <div v-if="runResult || runError" class="panel">
@@ -545,6 +610,24 @@ async function saveCase() {
 .hint {
   font-size: 12px;
   font-weight: 400;
+  color: var(--aqg-text-muted);
+}
+
+.list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 18px;
+}
+
+.list-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.list-empty-tip {
+  margin-top: 14px;
+  font-size: 12px;
   color: var(--aqg-text-muted);
 }
 

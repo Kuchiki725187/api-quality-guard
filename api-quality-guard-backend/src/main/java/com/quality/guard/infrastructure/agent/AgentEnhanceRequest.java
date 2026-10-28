@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 发送给 Agent 的用例增强请求。
+ * 发送给 Agent 的用例增强请求
  */
 @Data
 @Builder
