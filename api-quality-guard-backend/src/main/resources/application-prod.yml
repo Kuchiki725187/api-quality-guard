@@ -1,0 +1,24 @@
+spring:
+  servlet:
+    multipart:
+      # 与 Nginx client_max_body_size 保持一致
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+mybatis-plus:
+  configuration:
+    # 生产环境不打印 SQL 与参数
+    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    com.quality.guard: info

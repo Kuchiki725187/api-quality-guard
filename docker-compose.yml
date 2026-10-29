@@ -1,0 +1,128 @@
+name: api-quality-guard
+
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-api_quality_guard}
+      MYSQL_USER: ${MYSQL_USER:-aqg}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?请在 .env 中设置 MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?请在 .env 中设置 MYSQL_ROOT_PASSWORD}
+      TZ: ${TZ:-Asia/Shanghai}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - aqg-net
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?请在 .env 中设置 REDIS_PASSWORD}
+    command:
+      - redis-server
+      - --appendonly
+      - "yes"
+      - --requirepass
+      - ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - aqg-net
+
+  backend:
+    build:
+      context: ./api-quality-guard-backend
+    image: aqg-backend:latest
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/${MYSQL_DATABASE:-api_quality_guard}?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-aqg}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DATABASE: 0
+      AQG_AGENT_BASE_URL: http://agent:8090
+      AQG_INTERNAL_TOKEN: ${AQG_INTERNAL_TOKEN:?请在 .env 中设置 AQG_INTERNAL_TOKEN}
+      AQG_ADMIN_USERNAME: ${AQG_ADMIN_USERNAME:-admin}
+      AQG_ADMIN_PASSWORD: ${AQG_ADMIN_PASSWORD:?请在 .env 中设置 AQG_ADMIN_PASSWORD}
+      AQG_AUTH_REGISTRATION_ENABLED: ${AQG_AUTH_REGISTRATION_ENABLED:-false}
+      AQG_OWNER_BACKFILL_ENABLED: ${AQG_OWNER_BACKFILL_ENABLED:-true}
+      TZ: ${TZ:-Asia/Shanghai}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/api/health >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    networks:
+      - aqg-net
+
+  agent:
+    build:
+      context: ./api-quality-guard-agent
+    image: aqg-agent:latest
+    restart: unless-stopped
+    environment:
+      AGENT_LLM_BASE_URL: ${AGENT_LLM_BASE_URL:-https://open.bigmodel.cn/api/paas/v4}
+      AGENT_LLM_MODEL: ${AGENT_LLM_MODEL:-glm-5.3-flash}
+      AGENT_LLM_API_KEY: ${AGENT_LLM_API_KEY:-}
+      AGENT_LLM_MOCK: ${AGENT_LLM_MOCK:-false}
+      AGENT_LLM_MAX_ROUNDS: ${AGENT_LLM_MAX_ROUNDS:-3}
+      AQG_PLATFORM_BASE_URL: http://backend:8080
+      AQG_INTERNAL_TOKEN: ${AQG_INTERNAL_TOKEN:?请在 .env 中设置 AQG_INTERNAL_TOKEN}
+      TZ: ${TZ:-Asia/Shanghai}
+    depends_on:
+      backend:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/agent/health', timeout=3)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - aqg-net
+
+  frontend:
+    build:
+      context: ./api-quality-guard-frontend
+    image: aqg-frontend:latest
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - aqg-net
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  aqg-net:
+    driver: bridge

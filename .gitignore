@@ -13,7 +13,6 @@ api-quality-guard-frontend/dist/
 
 # ---------- 本地敏感配置 ----------
 application-local.yml
-application-local.yml.example
 .env
 .env.*
 docs

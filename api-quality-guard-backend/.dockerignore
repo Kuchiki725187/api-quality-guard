@@ -1,0 +1,8 @@
+target/
+.idea/
+*.iml
+logs/
+**/application-local.yml
+**/application-local.yml.example
+.env
+.env.*
