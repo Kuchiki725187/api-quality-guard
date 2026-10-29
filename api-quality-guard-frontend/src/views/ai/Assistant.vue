@@ -134,7 +134,6 @@ const fmtTime = (t) => (t ? t.replace('T', ' ').slice(11, 16) : '')
         <div>
           <div class="chat-title">
             AI 智能问答
-            <el-tag type="success" size="small" effect="plain">只读分析</el-tag>
           </div>
           <div class="chat-sub">查询平台质量、风险接口、执行结果与失败原因，回答基于真实数据</div>
         </div>

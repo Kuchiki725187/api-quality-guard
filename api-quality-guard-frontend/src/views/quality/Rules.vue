@@ -58,7 +58,7 @@ const gateRules = [
   {
     rule: '质量总分达标',
     threshold: 'score ≥ 80',
-    desc: '门禁检查的是单次运行评分 test_run.score，不是平台四维总分',
+    desc: '门禁检查的是单次运行评分，不是平台四维总分',
   },
   {
     rule: '执行异常零容忍',
@@ -88,7 +88,7 @@ const overrideSteps = [
             质量规则说明
             <el-tag type="info" size="small">只读</el-tag>
           </div>
-          <div class="page-sub">当前评分与门禁口径固定在代码中，本页展示实际生效的规则</div>
+          <div class="page-sub">当前评分与门禁口径固定，本页展示实际生效的规则</div>
         </div>
       </div>
       <el-alert
@@ -96,14 +96,13 @@ const overrideSteps = [
         show-icon
         :closable="false"
         class="head-alert"
-        title="规则暂不支持页面编辑；计划级可通过 execution_config.gate 覆盖门禁阈值，门禁检查请求也可临时覆盖。"
+        title="规则暂不支持页面编辑，门禁检查请求也可临时覆盖"
       />
     </div>
 
     <div class="panel">
       <h3 class="panel-title">
         <span>1. 单次运行评分</span>
-        <span class="sub">test_run.score / score_detail</span>
       </h3>
       <el-table :data="runDimensions" class="dark-table">
         <el-table-column prop="name" label="维度" width="120" />
@@ -160,7 +159,6 @@ const overrideSteps = [
     <div class="panel">
       <h3 class="panel-title">
         <span>3. 质量门禁</span>
-        <span class="sub">quality_gate_record</span>
       </h3>
       <el-table :data="gateRules" class="dark-table">
         <el-table-column prop="rule" label="规则" width="160" />
@@ -192,8 +190,7 @@ const overrideSteps = [
       </div>
 
       <div class="note">
-        仅 SUCCESS / FAILED 的运行可以检查，其他状态返回 409；每次检查写入 quality_gate_record，
-        保存当时的阈值快照和违规明细。门禁检查的是单次运行评分，不是平台四维总分。
+        仅 SUCCESS / FAILED 的运行可以检查，其他状态返回 409；门禁检查的是单次运行评分，不是平台四维总分。
       </div>
     </div>
   </div>

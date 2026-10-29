@@ -81,7 +81,7 @@ const feedbackType = (f) =>
       <div class="ai-title">
         <el-icon color="#8b5cf6" :size="20"><MagicStick /></el-icon>
         <span>AI 质量分析报告</span>
-        <el-tag effect="plain" size="small">由独立诊断 Agent 生成 · 仅提供建议，不影响测试判定</el-tag>
+        <el-tag effect="plain" size="small">仅提供建议，不影响测试判定</el-tag>
       </div>
     </div>
 

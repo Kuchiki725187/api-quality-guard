@@ -363,7 +363,7 @@ async function saveCase() {
     <div class="panel">
       <h3 class="panel-title">
         <span>用例生成与管理</span>
-        <span class="hint">生成或手动创建后自动保存；刷新页面会按选中接口回显已保存用例</span>
+        <span class="hint">生成或手动创建后自动保存</span>
       </h3>
       <div class="gen-row">
         <el-select
@@ -392,7 +392,7 @@ async function saveCase() {
         <el-button @click="openCreateDialog">手动新建用例</el-button>
         <el-button type="success" plain @click="openAiDialog">
           <el-icon><MagicStick /></el-icon>
-          <span>AI 增强生成</span>
+          <span>AI 生成</span>
         </el-button>
       </div>
 
